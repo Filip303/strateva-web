@@ -5,8 +5,10 @@
 >
 > This website is a public, demonstrative laboratory. It moves no real money,
 > holds no keys, connects to no real providers or wallets, performs no KYC and
-> is not an authorized financial service. Every provider, fee, FX rate, time
-> and reliability figure shown is **synthetic**.
+> is not an authorized financial service. Providers, fees, FX rates and
+> reliability figures are **synthetic**; per-leg timing is labelled with its
+> provenance (declarative, observed or fallback) — an observed leg carries
+> measured latency evidence, never a real transfer executed by Strateva.
 
 ## What it is
 

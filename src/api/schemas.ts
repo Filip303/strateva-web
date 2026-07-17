@@ -246,10 +246,76 @@ export const publicRouteResultSchema = z
     explanation: z.string(),
     warnings: z.array(z.string()),
   })
-  .refine(
-    (route) => route.conservative_time_seconds >= route.expected_time_seconds,
-    { message: 'conservative time must be >= expected time' },
-  )
+  .superRefine((route, ctx) => {
+    if (route.conservative_time_seconds < route.expected_time_seconds) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'conservative time must be >= expected time',
+      })
+    }
+    // Cross-field temporal coherence: the backend derives every one of these
+    // fields from the same per-leg latency profiles (domain/models.py,
+    // domain/latency.py), so a response violating them cannot have come from
+    // the engine. Deliberately NOT enforced: any relation over fees, FX or
+    // amounts, and time_to_fiat_available_seconds vs conservative time (not
+    // declared as an independent public invariant).
+    const sum = (
+      entries: ReadonlyArray<{ expected_seconds: number; conservative_seconds: number }>,
+      key: 'expected_seconds' | 'conservative_seconds',
+    ) => entries.reduce((total, entry) => total + entry[key], 0)
+
+    if (route.total_time_seconds !== route.expected_time_seconds) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'total_time_seconds must equal expected_time_seconds',
+      })
+    }
+    if (sum(route.latency_breakdown, 'expected_seconds') !== route.expected_time_seconds) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'latency_breakdown expected sum must equal expected_time_seconds',
+      })
+    }
+    if (
+      sum(route.latency_breakdown, 'conservative_seconds') !==
+      route.conservative_time_seconds
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'latency_breakdown conservative sum must equal conservative_time_seconds',
+      })
+    }
+    if (sum(route.latency_legs, 'expected_seconds') !== route.expected_time_seconds) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'latency_legs expected sum must equal expected_time_seconds',
+      })
+    }
+    if (
+      sum(route.latency_legs, 'conservative_seconds') !== route.conservative_time_seconds
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'latency_legs conservative sum must equal conservative_time_seconds',
+      })
+    }
+    if (route.steps.length !== route.latency_legs.length) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'steps and latency_legs must have the same number of entries',
+      })
+    } else {
+      route.steps.forEach((step, index) => {
+        if (route.latency_legs[index].position !== step.position) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `latency_legs[${index}].position must match steps[${index}].position`,
+          })
+        }
+      })
+    }
+  })
 export type PublicRouteResult = z.infer<typeof publicRouteResultSchema>
 
 const providerFailureSchema = z.object({

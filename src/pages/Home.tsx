@@ -8,8 +8,8 @@ export default function Home() {
         Strateva is an experimental, public <strong>route simulator</strong>{' '}
         for international payments. It models payment infrastructures as a
         graph and explains how a route can be chosen by comparing{' '}
-        <strong>cost, time and reliability</strong> — all on simulated,
-        synthetic data.
+        <strong>cost, time and reliability</strong> — all within a
+        simulation.
       </p>
       <p>
         It is a laboratory, not a money-transfer product: nothing here

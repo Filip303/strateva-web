@@ -1,16 +1,13 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { requestQuote } from '../api/client'
 import { toApiError } from '../api/errors'
 import { useCorridors } from '../api/hooks'
-import {
-  OBJECTIVE_LABELS,
-  OBJECTIVES,
-  type Objective,
-  type PublicRouteResult,
-} from '../api/schemas'
+import { OBJECTIVE_LABELS, OBJECTIVES, type Objective } from '../api/schemas'
 import { SIMULATION_NOTICE } from '../components/Layout'
-import { corridorLabel, formatSeconds } from '../lib/format'
+import RouteCard from '../components/RouteCard'
+import { corridorLabel } from '../lib/format'
 import { useRetryCountdown } from '../lib/useRetryCountdown'
 
 const AMOUNT_PATTERN = /^\d+(\.\d+)?$/
@@ -21,57 +18,6 @@ const AMOUNT_PATTERN = /^\d+(\.\d+)?$/
  * digit (rejects '0', '0.0', '000.000', …). */
 function isPositiveDecimalString(value: string): boolean {
   return AMOUNT_PATTERN.test(value) && /[1-9]/.test(value)
-}
-
-function RouteCard({
-  title,
-  route,
-  sourceCurrency,
-  destinationCurrency,
-}: {
-  title: string
-  route: PublicRouteResult
-  sourceCurrency: string
-  destinationCurrency: string
-}) {
-  return (
-    <section className="route-card" aria-label={title}>
-      <h3>{title}</h3>
-      <ul>
-        <li>
-          Receives (approx.): {route.estimated_received_amount}{' '}
-          {destinationCurrency}
-        </li>
-        <li>
-          Total cost: {route.total_cost} {destinationCurrency} (
-          {route.total_cost_percentage} %)
-        </li>
-        <li>
-          Effective FX rate (simulated): {route.effective_fx_rate}{' '}
-          {destinationCurrency} per {sourceCurrency}
-        </li>
-        <li>Expected time: {formatSeconds(route.expected_time_seconds)}</li>
-        <li>
-          Conservative time: {formatSeconds(route.conservative_time_seconds)}
-        </li>
-        <li>
-          Fiat available in:{' '}
-          {formatSeconds(route.time_to_fiat_available_seconds)}
-        </li>
-        <li>Reliability: {route.reliability_score}</li>
-        <li>Operates 24/7: {route.operates_24_7 ? 'Yes' : 'No'}</li>
-        <li>Expires: {route.expires_at}</li>
-      </ul>
-      <p>Why: {route.explanation}</p>
-      {route.warnings.length > 0 && (
-        <ul className="route-warnings">
-          {route.warnings.map((warning) => (
-            <li key={warning}>⚠ {warning}</li>
-          ))}
-        </ul>
-      )}
-    </section>
-  )
 }
 
 export default function Simulator() {
@@ -132,9 +78,11 @@ export default function Simulator() {
     <>
       <h1>Simulator</h1>
       <p className="muted">
-        Compare simulated routes for an amount and an objective. Every figure
-        comes from the public API and is synthetic. Advanced options (limits
-        and exclusions) arrive in a later change.
+        Compare simulated routes for an amount and an objective. The whole
+        result is a simulation and moves no money: fees, FX and reliability
+        are synthetic, and each leg's timing is labelled with its own
+        provenance — declarative, observed or fallback. Advanced options
+        (limits and exclusions) arrive in a later change.
       </p>
 
       {corridors.isPending && <p>Loading corridors…</p>}
@@ -244,6 +192,11 @@ export default function Simulator() {
             </p>
             <p>Objective: {OBJECTIVE_LABELS[data.objective]}</p>
             <p>Recommended route valid until: {data.quote_expires_at}</p>
+            <p>
+              <Link to="/methodology">
+                How to read these figures — Methodology
+              </Link>
+            </p>
             <RouteCard
               title="Recommended"
               route={data.recommended_route}

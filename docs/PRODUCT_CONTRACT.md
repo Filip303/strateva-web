@@ -1,8 +1,10 @@
 # Product contract — Strateva Web (v1)
 
 > **Simulation only. Strateva does not execute, custody, convert or transmit
-> funds.** All displayed data (providers, fees, FX, times, reliability) is
-> synthetic and comes from a read-only public HTTP contract.
+> funds.** Providers, fees, FX and reliability data are synthetic; per-leg
+> timing carries its own provenance (declarative, observed or fallback).
+> Everything comes from a read-only public HTTP contract and none of it moves
+> money.
 
 This document records the **approved product decisions** for the first version
 of the website. It is the functional contract the React implementation must

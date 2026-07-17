@@ -132,3 +132,145 @@ export function makeQuoteResponse(): QuoteResponse {
     provider_failures: [],
   }
 }
+
+/**
+ * A contract-complete, ENGINE-COHERENT detailed response: the recommended
+ * route has one latency leg per step (same order, matching positions), the
+ * per-component breakdown and both leg/breakdown sums equal the route
+ * totals, and total_time_seconds equals expected_time_seconds — exactly the
+ * invariants the backend derives from its per-leg latency profiles. It keeps
+ * declarative, observed, fallback and chain-confirmation legs for the
+ * results-UX regressions (fallback reason: the backend-style code 'stale').
+ */
+export function makeDetailedQuoteResponse(): QuoteResponse {
+  const base = makeQuoteResponse()
+  const recommended = base.recommended_route
+  const fxStep = recommended.steps[0]
+  const tokenNode = {
+    node_id: 'ttt_chainx',
+    asset: 'TTT',
+    network: 'chainx',
+    country: null,
+    account_type: 'onchain',
+    provider: 'mock_ramp',
+    metadata: {},
+  } as const
+  return {
+    ...base,
+    recommended_route: {
+      ...recommended,
+      steps: [
+        fxStep,
+        {
+          position: 1,
+          source_node: fxStep.destination_node,
+          destination_node: tokenNode,
+          provider: 'mock_ramp',
+          operation_type: 'onramp',
+          fixed_fee: '0',
+          percentage_fee_amount: '0',
+          spread_cost: '0',
+          estimated_time_seconds: 120,
+          reliability_score: 0.97,
+          amount_in: '4821.07',
+          amount_out: '4821.07',
+        },
+        {
+          position: 2,
+          source_node: tokenNode,
+          destination_node: { ...tokenNode, node_id: 'ttt_chainx_offramp' },
+          provider: 'mock_ramp',
+          operation_type: 'onchain_transfer',
+          fixed_fee: '0',
+          percentage_fee_amount: '0',
+          spread_cost: '0',
+          estimated_time_seconds: 120,
+          reliability_score: 0.99,
+          amount_in: '4821.07',
+          amount_out: '4821.07',
+        },
+        {
+          position: 3,
+          source_node: { ...tokenNode, node_id: 'ttt_chainx_offramp' },
+          destination_node: fxStep.destination_node,
+          provider: 'mock_payout',
+          operation_type: 'offramp',
+          fixed_fee: '0',
+          percentage_fee_amount: '0',
+          spread_cost: '0',
+          estimated_time_seconds: 300,
+          reliability_score: 0.96,
+          amount_in: '4821.07',
+          amount_out: '4821.07',
+        },
+      ],
+      // Coherent totals: expected 600+120+120+300 = 1140; conservative
+      // 900+180+240+600 = 1920; total_time == expected_time.
+      total_time_seconds: 1140,
+      expected_time_seconds: 1140,
+      conservative_time_seconds: 1920,
+      time_to_fiat_available_seconds: 1920,
+      latency_breakdown: [
+        { component: 'bank_settlement', expected_seconds: 600, conservative_seconds: 900 },
+        { component: 'onramp', expected_seconds: 120, conservative_seconds: 180 },
+        {
+          component: 'chain_confirmation',
+          expected_seconds: 120,
+          conservative_seconds: 240,
+        },
+        { component: 'offramp', expected_seconds: 300, conservative_seconds: 600 },
+      ],
+      latency_legs: [
+        recommended.latency_legs[0],
+        {
+          position: 1,
+          edge_id: 'edge_onramp',
+          provider: 'mock_ramp',
+          component: 'onramp',
+          confirmation_target: null,
+          expected_seconds: 120,
+          conservative_seconds: 180,
+          availability: 'banking_hours',
+          basis: 'operational_duration',
+          latency_source: 'observed',
+          provenance: 'observed',
+          fallback_reason: null,
+          as_of: '2026-07-01',
+          valid_until: '2026-08-01',
+        },
+        {
+          position: 2,
+          edge_id: 'edge_chain',
+          provider: 'mock_ramp',
+          component: 'chain_confirmation',
+          confirmation_target: 'safe',
+          expected_seconds: 120,
+          conservative_seconds: 240,
+          availability: 'continuous',
+          basis: 'operational_duration',
+          latency_source: 'declarative',
+          provenance: 'declarative',
+          fallback_reason: null,
+          as_of: null,
+          valid_until: null,
+        },
+        {
+          position: 3,
+          edge_id: 'edge_offramp',
+          provider: 'mock_payout',
+          component: 'offramp',
+          confirmation_target: null,
+          expected_seconds: 300,
+          conservative_seconds: 600,
+          availability: 'banking_hours',
+          basis: 'operational_duration',
+          latency_source: 'declarative',
+          provenance: 'fallback',
+          fallback_reason: 'stale',
+          as_of: null,
+          valid_until: null,
+        },
+      ],
+    },
+  }
+}
