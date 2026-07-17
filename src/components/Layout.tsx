@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { applyMeta } from '../lib/meta'
+import { openConsentPreferences } from '../analytics/consent'
 import ConsentBanner from './ConsentBanner'
 
 export const SIMULATION_NOTICE =
@@ -79,6 +80,15 @@ export default function Layout() {
             ))}
           </ul>
         </nav>
+        <p>
+          <button
+            type="button"
+            className="link-button"
+            onClick={openConsentPreferences}
+          >
+            Privacy choices
+          </button>
+        </p>
         <p>{SIMULATION_NOTICE}</p>
       </footer>
       <ConsentBanner />

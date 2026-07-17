@@ -58,3 +58,42 @@ test('a remembered acceptance re-loads analytics with no banner', async ({
   ).toBeHidden()
   await expect.poll(() => gtm.length).toBeGreaterThan(0)
 })
+
+test('consent can be withdrawn from Privacy choices; GTM is not reloaded', async ({
+  page,
+}) => {
+  const gtm = await trackGtm(page)
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Accept analytics' }).click()
+  await expect.poll(() => gtm.length).toBeGreaterThan(0)
+  const afterAccept = gtm.length
+
+  // Permanent footer control re-opens the preferences.
+  await page.getByRole('button', { name: 'Privacy choices' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Analytics consent' })
+  await expect(dialog).toBeVisible()
+
+  // Withdraw → the page reloads and GTM is NOT requested again.
+  await page.getByRole('button', { name: 'Withdraw consent' }).click()
+  await page.waitForLoadState('load')
+  await expect(
+    page.getByRole('dialog', { name: 'Analytics consent' }),
+  ).toBeHidden()
+  await page.waitForTimeout(400)
+  expect(gtm.length).toBe(afterAccept)
+})
+
+test('Privacy choices is keyboard reachable and named', async ({ page }) => {
+  await page.goto('/')
+  // Dismiss the first-run banner so it doesn't overlap the footer control.
+  await page.getByRole('button', { name: 'Reject' }).click()
+
+  const control = page.getByRole('button', { name: 'Privacy choices' })
+  await control.focus()
+  await expect(control).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(
+    page.getByRole('dialog', { name: 'Analytics consent' }),
+  ).toBeVisible()
+})

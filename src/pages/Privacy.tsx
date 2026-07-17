@@ -17,7 +17,9 @@ export default function Privacy() {
         <strong>only after you press “Accept analytics”</strong> in the consent
         banner; if you reject or ignore it, no analytics script or cookie is
         loaded. The legal basis is your consent, which you can withhold or
-        withdraw at any time by clearing your site data and reloading.
+        withdraw at any time using the <strong>“Privacy choices”</strong>{' '}
+        control in the footer — withdrawing removes Google Analytics’ cookies
+        and reloads the page so tracking stops immediately.
       </p>
       <p>
         When enabled, Google Analytics processes standard technical data (such

@@ -123,8 +123,17 @@ consent-gated** to satisfy GDPR/ePrivacy prior-consent rules:
 - Because the bootstrap is first-party (not an inline `<script>`), the CSP
   needs no `unsafe-inline`. The GTM/GA hosts above are the only additions.
 - The served HTML never hardcodes GTM: the CI container smoke test asserts the
-  markup contains neither the GTM domain nor a `gtm.start` bootstrap, proving
-  analytics cannot fire without consent.
+  markup contains neither the GTM domain nor a `gtm.start` bootstrap, and
+  `scripts/verify-dist.mjs` fails the build on any GTM container id other than
+  the approved `GTM-KR2W2R68`, any direct `gtag(` bootstrap, a hardcoded
+  `google-analytics.com` reference, or the GTM loader appearing outside the JS
+  bundle — proving analytics cannot fire without consent and no other analytics
+  can slip in.
+- **Withdrawal is as easy as granting.** A permanent "Privacy choices" control
+  in the footer re-opens the banner. Withdrawing a granted consent stores
+  `denied`, removes GA's `_ga`/`_ga_*` cookies (best-effort) and reloads the
+  page so the already-executed GTM/GA script and state are discarded and not
+  loaded again — no need to clear all site data.
 - The `/legal/privacy` and `/legal/cookies` pages disclose this. If the GTM
   container is changed to fire tags beyond GA (e.g. Ads), the CSP and those
   pages must be updated first.

@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  clearAnalyticsCookies,
+  CONSENT_EVENT,
   CONSENT_STORAGE_KEY,
+  openConsentPreferences,
   readConsent,
   writeConsent,
 } from '../analytics/consent'
@@ -36,5 +39,27 @@ describe('analytics consent', () => {
       throw new Error('storage blocked')
     })
     expect(() => writeConsent('granted')).not.toThrow()
+  })
+
+  it('openConsentPreferences dispatches the consent event', () => {
+    const handler = vi.fn()
+    window.addEventListener(CONSENT_EVENT, handler)
+    openConsentPreferences()
+    expect(handler).toHaveBeenCalledTimes(1)
+    window.removeEventListener(CONSENT_EVENT, handler)
+  })
+
+  it('clearAnalyticsCookies removes only _ga and _ga_* cookies', () => {
+    document.cookie = '_ga=GA1.1.123456; path=/'
+    document.cookie = '_ga_ABC123=GS1.1.789; path=/'
+    document.cookie = 'keep_me=yes; path=/'
+    clearAnalyticsCookies()
+    expect(document.cookie).not.toContain('_ga=')
+    expect(document.cookie).not.toContain('_ga_ABC123=')
+    expect(document.cookie).toContain('keep_me=yes')
+  })
+
+  it('clearAnalyticsCookies never throws', () => {
+    expect(() => clearAnalyticsCookies()).not.toThrow()
   })
 })

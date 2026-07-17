@@ -35,7 +35,11 @@ test('keyboard navigation reaches the skip link and main content', async ({
   page,
 }) => {
   await page.goto('/')
-  await page.keyboard.press('Tab')
+  // Press Tab via the body element so the page reliably holds focus first — the
+  // first Tab then advances from the document top to the skip link. (Bare
+  // page.keyboard.press can drop the keystroke under parallel load if the page
+  // is not yet the active input target.)
+  await page.locator('body').press('Tab')
   const skipLink = page.getByRole('link', { name: 'Skip to content' })
   await expect(skipLink).toBeFocused()
   await page.keyboard.press('Enter')

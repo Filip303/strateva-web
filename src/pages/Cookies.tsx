@@ -21,8 +21,15 @@ export default function Cookies() {
       <p>
         Your choice is remembered using a single non-cookie preference stored in
         your browser (<code>strateva-analytics-consent</code>). It records only
-        “granted” or “denied” — nothing personal. To change your mind, clear
-        your site data and reload; the banner will ask again.
+        “granted” or “denied” — nothing personal.
+      </p>
+      <p>
+        You can change your mind at any time using the{' '}
+        <strong>“Privacy choices”</strong> control in the footer. Withdrawing
+        consent stores “denied”, removes Google Analytics’ <code>_ga</code> and{' '}
+        <code>_ga_*</code> cookies on a best-effort basis, and reloads the page
+        so the analytics script stops running — no need to clear all your site
+        data.
       </p>
       <p>
         We set no advertising, personalization or session cookies, and no other
