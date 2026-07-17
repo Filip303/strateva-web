@@ -47,12 +47,36 @@ The repository now contains the **frontend foundation**: a React + TypeScript
 skeleton pages for every route in the sitemap, unit tests (Vitest + Testing
 Library), Playwright smoke tests and a verification-only CI workflow.
 
-The simulator and the corridors page now consume the **public HTTP contract
+The simulator and the corridors page consume the **public HTTP contract
 only** — `GET /api/v1/corridors` and `POST /api/v1/routes/quote` on the URL
 configured via `VITE_API_URL`, with every response validated at runtime
-before rendering. That is the app's **only** network surface: there are no
-analytics, no tracking, no cookies and no browser storage. Quote requests
-are never retried automatically.
+before rendering. Quote requests are never retried automatically. The amounts
+you enter and the quote responses are **never** sent to analytics and are
+**never** persisted — the simulation is ephemeral.
+
+### Analytics (optional, opt-in)
+
+Beyond the API, the app can load **Google Analytics 4** (`gtag.js`, measurement
+id `G-PNQWWXSPZX`) for optional audience measurement, but **only after you
+opt in** via the consent banner:
+
+- Nothing from Google loads before consent; on "Reject" or no choice, no GA4
+  script runs and no analytics cookie is set.
+- Your consent choice (only `"granted"`/`"denied"`) is stored in `localStorage`
+  under `strateva-analytics-consent`.
+- After consent, GA4 may set its first-party cookies `_ga` and `_ga_*`. GA4 is
+  restricted to audience measurement (Consent Mode: analytics only; all
+  advertising states denied; Google Signals and ad personalization off).
+- You can withdraw at any time via the **"Privacy choices"** control in the
+  footer; withdrawing denies consent, removes the `_ga`/`_ga_*` cookies and
+  reloads so tracking stops.
+- The Google Analytics domains are therefore an **additional network surface
+  allowed by the CSP** (see `docs/WEB_SECURITY_HEADERS.md`); no other third
+  party is permitted.
+
+There is no login, no accounts and no other tracking. Full details are on the
+[Privacy](./src/pages/Privacy.tsx) and [Cookies](./src/pages/Cookies.tsx)
+pages.
 
 The repository also contains **auditable staging hosting configuration**
 (Dockerfile + Caddy + `railway.toml` + a CI container smoke test) that is

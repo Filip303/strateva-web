@@ -110,11 +110,20 @@ CSP, HSTS or caching. The CI container smoke test asserts both modes.
 ## Analytics and consent
 
 Strateva loads **Google Analytics 4** (measurement id `G-PNQWWXSPZX`, via
-`gtag.js`) for anonymous audience measurement. It is **opt-in and
-consent-gated** to satisfy GDPR/ePrivacy prior-consent rules:
+`gtag.js`) for optional audience measurement. This is **not anonymous** — GA4
+assigns a pseudonymous client id (the `_ga` cookie) and processes IP, device,
+browser and pages viewed — so it is **opt-in and consent-gated** to satisfy
+GDPR/ePrivacy prior-consent rules:
 
 - Nothing analytics-related loads on first paint. A consent banner
   (`src/components/ConsentBanner.tsx`) asks the visitor to accept or reject.
+- **Restricted to audience measurement (Consent Mode v2).** On load the module
+  grants **only** `analytics_storage`; `ad_storage`, `ad_user_data` and
+  `ad_personalization` stay `denied`, and `allow_google_signals` /
+  `allow_ad_personalization_signals` are set to `false`. No Ads, remarketing or
+  personalization. On withdrawal a Consent Mode `update` sets analytics and all
+  advertising states to `denied` before cookies are cleared and the page
+  reloads.
 - GA4 is injected by a **first-party module** (`src/analytics/ga.ts`) **only**
   after an explicit "Accept" — never before, and never on "Reject". A granted
   choice is remembered (a single non-personal flag in `localStorage`,
@@ -139,6 +148,20 @@ consent-gated** to satisfy GDPR/ePrivacy prior-consent rules:
 - The `/legal/privacy` and `/legal/cookies` pages disclose this. If GA4 is
   configured to fire beyond basic audience measurement (e.g. Ads/remarketing),
   the CSP and those pages must be updated first.
+
+### Manual GA property review (required, outside this repo)
+
+The code restricts GA4 to audience measurement, but the **property settings**
+are managed in Google Analytics, not here. Before relying on this in a real
+environment, confirm in the GA Admin for `G-PNQWWXSPZX` that it:
+
+- has **Google Signals** disabled for this use;
+- is **not linked to Google Ads** or other advertising products;
+- has **no remarketing, Ads personalization or advertising features** enabled;
+- uses **data retention and data-sharing** settings consistent with the
+  published privacy/cookies pages.
+
+This cannot be asserted from code; it is a manual, out-of-band verification.
 
 ## Source maps policy
 

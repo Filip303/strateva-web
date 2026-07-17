@@ -8,7 +8,7 @@ import {
   writeConsent,
   type ConsentState,
 } from '../analytics/consent'
-import { loadAnalytics } from '../analytics/ga'
+import { loadAnalytics, revokeAnalyticsConsent } from '../analytics/ga'
 
 /**
  * Opt-in analytics consent banner.
@@ -58,9 +58,12 @@ export default function ConsentBanner() {
     const wasGranted = state === 'granted'
     writeConsent('denied')
     if (wasGranted) {
-      // Withdrawing an active consent: drop GA's first-party cookies and reload
-      // so the already-loaded analytics script and its dataLayer are discarded.
-      // On reload, consent is "denied", so analytics are not requested again.
+      // Withdrawing an active consent: first tell GA to deny analytics AND all
+      // advertising states (Consent Mode update), THEN drop GA's first-party
+      // cookies and reload so the already-loaded analytics script and its
+      // dataLayer are discarded. On reload, consent is "denied", so analytics
+      // are not requested again.
+      revokeAnalyticsConsent()
       clearAnalyticsCookies()
       reloadPage()
       return
@@ -74,7 +77,7 @@ export default function ConsentBanner() {
   return (
     <div className="consent-banner" role="dialog" aria-label="Analytics consent">
       <p className="consent-text">
-        Strateva uses Google Analytics for anonymous audience measurement,
+        Strateva uses Google Analytics for optional audience measurement,
         loaded only if you accept.{' '}
         {active
           ? 'Analytics are currently ON — you can withdraw at any time.'

@@ -10,6 +10,7 @@ import {
   openConsentPreferences,
   readConsent,
 } from '../analytics/consent'
+import * as ga from '../analytics/ga'
 import { resetAnalyticsForTests } from '../analytics/ga'
 
 type DataLayerWindow = { dataLayer?: unknown[] }
@@ -95,6 +96,34 @@ describe('ConsentBanner', () => {
     expect(readConsent()).toBe('denied')
     expect(document.cookie).not.toContain('_ga=')
     expect(consent.reloadPage).toHaveBeenCalledTimes(1)
+    // A Consent Mode update denying analytics + all ad states was pushed.
+    const dl = ((window as DataLayerWindow).dataLayer ?? []) as unknown[][]
+    const update = dl.find(
+      (e) => Array.isArray(e) && e[0] === 'consent' && e[1] === 'update',
+    )
+    expect(update?.[2]).toMatchObject({ analytics_storage: 'denied' })
+  })
+
+  it('withdrawal denies consent BEFORE clearing cookies and reloading', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(CONSENT_STORAGE_KEY, 'granted')
+    renderBanner()
+    act(() => openConsentPreferences())
+    await screen.findByRole('dialog', { name: 'Analytics consent' })
+
+    const revoke = vi.spyOn(ga, 'revokeAnalyticsConsent')
+    const clear = vi.spyOn(consent, 'clearAnalyticsCookies')
+    // reloadPage is already mocked in beforeEach.
+    await user.click(screen.getByRole('button', { name: 'Withdraw consent' }))
+
+    expect(revoke).toHaveBeenCalledTimes(1)
+    expect(clear).toHaveBeenCalledTimes(1)
+    expect(consent.reloadPage).toHaveBeenCalledTimes(1)
+    const revokeOrder = revoke.mock.invocationCallOrder[0]
+    const clearOrder = clear.mock.invocationCallOrder[0]
+    const reloadOrder = (consent.reloadPage as unknown as { mock: { invocationCallOrder: number[] } }).mock.invocationCallOrder[0]
+    expect(revokeOrder).toBeLessThan(clearOrder)
+    expect(clearOrder).toBeLessThan(reloadOrder)
   })
 
   it('reopening preferences after denying lets the user accept', async () => {

@@ -38,7 +38,7 @@ these rules must be rejected.
 
 ## Analytics (consent-gated only)
 
-Anonymous audience measurement via **Google Analytics 4** (`gtag.js`,
+Optional audience measurement via **Google Analytics 4** (`gtag.js`,
 measurement id `G-PNQWWXSPZX`) is permitted, but **only** under prior, explicit,
 opt-in consent (GDPR/ePrivacy):
 
