@@ -12,8 +12,8 @@ export default function Privacy() {
       </p>
       <h2>Analytics (opt-in)</h2>
       <p>
-        With your consent, we use Google Tag Manager (which loads Google
-        Analytics) for anonymous audience measurement. It loads{' '}
+        With your consent, we use Google Analytics for optional audience
+        measurement. It loads{' '}
         <strong>only after you press “Accept analytics”</strong> in the consent
         banner; if you reject or ignore it, no analytics script or cookie is
         loaded. The legal basis is your consent, which you can withhold or
@@ -22,11 +22,16 @@ export default function Privacy() {
         and reloads the page so tracking stops immediately.
       </p>
       <p>
-        When enabled, Google Analytics processes standard technical data (such
-        as IP address, device and browser, and pages viewed) as a processor on
-        our behalf; Google is a third party with its own privacy terms. We do
-        not collect names, accounts or payment data — there are none: Strateva
-        is a simulation and moves no money.
+        This is <strong>not anonymous</strong>: when enabled, Google Analytics
+        assigns a pseudonymous client identifier (stored in the{' '}
+        <code>_ga</code> cookie) to distinguish visitors, and processes standard
+        technical data such as IP address, device and browser, and pages
+        viewed, as a processor on our behalf. Google is a third party with its
+        own privacy terms. We restrict it to audience measurement — no
+        advertising, no remarketing, no cross-site tracking and no Google
+        Signals. We collect no names, accounts or payment data — there are
+        none: Strateva is a simulation and moves no money, and the amounts you
+        enter and the quote responses are never sent to analytics.
       </p>
       <p>
         The only value we persist is your consent choice, a single non-personal

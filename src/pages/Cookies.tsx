@@ -12,11 +12,18 @@ export default function Cookies() {
       </p>
       <h2>Analytics cookies (only if you accept)</h2>
       <p>
-        We offer optional, anonymous audience measurement through Google Tag
-        Manager, which loads Google Analytics. These analytics cookies are set{' '}
+        We offer optional audience measurement through Google Analytics. These
+        analytics cookies are set{' '}
         <strong>only after you press “Accept analytics”</strong> in the consent
         banner. If you reject, or ignore the banner, none of them are set and no
         analytics script is loaded.
+      </p>
+      <p>
+        These cookies are <strong>not anonymous</strong>: Google Analytics’{' '}
+        <code>_ga</code> cookie stores a pseudonymous client identifier used to
+        distinguish visitors, and <code>_ga_*</code> holds per-session state. We
+        restrict Google Analytics to audience measurement — no advertising,
+        remarketing, personalization or Google Signals.
       </p>
       <p>
         Your choice is remembered using a single non-cookie preference stored in

@@ -8,9 +8,9 @@
  * budgets.
  *
  * Analytics allowlist: the ONLY analytics permitted is the approved,
- * consent-gated Google Tag Manager container. Any other GTM container id, a
- * direct gtag() bootstrap, a hardcoded google-analytics.com reference, GTM in
- * served HTML, or the GTM loader outside JavaScript is a failure.
+ * consent-gated Google Analytics 4 measurement id (gtag.js). Any other GA4 id,
+ * any GTM container id, a hardcoded google-analytics.com reference, analytics
+ * in served HTML, or the gtag.js loader outside JavaScript is a failure.
  *
  * `collectFailures(distDir)` is exported so the checks can be unit-tested
  * against fixtures; the CLI wrapper runs it against ../dist.
@@ -42,9 +42,10 @@ const TEXT_EXTENSIONS = new Set([
   '.json',
 ])
 
-// The single approved, consent-gated analytics container and its loader host.
-const APPROVED_GTM_ID = 'GTM-KR2W2R68'
-const GTM_LOADER_HOST = 'googletagmanager.com'
+// The single approved, consent-gated GA4 measurement id and the gtag.js loader
+// host. GA4 replaced Google Tag Manager: no GTM container may appear anymore.
+const APPROVED_GA_ID = 'G-PNQWWXSPZX'
+const ANALYTICS_LOADER_HOST = 'googletagmanager.com'
 
 const FORBIDDEN_PATTERNS = [
   { name: 'source map reference', regex: /sourceMappingURL/ },
@@ -55,9 +56,9 @@ const FORBIDDEN_PATTERNS = [
   { name: 'Supabase', regex: /supabase/i },
   { name: 'Google login', regex: /accounts\.google\.com|google.?signin|gsi\/client/i },
   // Other analytics vendors, and a HARDCODED google-analytics.com reference,
-  // stay forbidden. GA is loaded at runtime by the approved GTM container, not
-  // baked into the bundle; the only approved analytics host is checked
-  // separately (see the GTM allowlist below).
+  // stay forbidden. GA4's collection endpoints are contacted at runtime by
+  // gtag.js (Google's code), not baked into the bundle; the only approved
+  // analytics id/host is checked separately (see the GA4 allowlist below).
   {
     name: 'non-consented analytics',
     regex: /mixpanel|segment\.io|hotjar|plausible\.io|posthog|google-analytics\.com/i,
@@ -129,31 +130,32 @@ export function collectFailures(distDir) {
       failures.push(`${rel}: contains eval( in production bundle`)
     }
 
-    // --- Analytics allowlist (consent-gated GTM only) ---
-    // Only the approved container id may appear; any other GTM-XXXX fails.
-    for (const id of content.match(/GTM-[A-Z0-9]+/g) ?? []) {
-      if (id !== APPROVED_GTM_ID) {
-        failures.push(`${rel}: unapproved GTM container id (${id})`)
+    // --- Analytics allowlist (consent-gated GA4 only) ---
+    // Only the approved GA4 measurement id may appear; any other G-XXXX fails.
+    for (const id of content.match(/\bG-[A-Z0-9]{6,}\b/g) ?? []) {
+      if (id !== APPROVED_GA_ID) {
+        failures.push(`${rel}: unapproved GA4 measurement id (${id})`)
       }
     }
-    // A direct gtag() bootstrap is never authorized — GTM loads GA, not us.
-    if (/\bgtag\s*\(/.test(content)) {
-      failures.push(`${rel}: unauthorized gtag( bootstrap`)
+    // GA4 replaced Google Tag Manager — no GTM container id may appear at all.
+    for (const id of content.match(/\bGTM-[A-Z0-9]+\b/g) ?? []) {
+      failures.push(`${rel}: GTM container id no longer allowed (${id})`)
     }
-    // The GTM loader host may appear ONLY in JavaScript (the consent module
+    // The gtag.js loader host may appear ONLY in JavaScript (the consent module
     // bundle) — never in served HTML or any other asset.
-    if (content.includes(GTM_LOADER_HOST) && ext !== '.js') {
-      failures.push(`${rel}: GTM loader reference must appear only in JS`)
+    if (content.includes(ANALYTICS_LOADER_HOST) && ext !== '.js') {
+      failures.push(`${rel}: analytics loader reference must appear only in JS`)
     }
-    // Served HTML must never reference GTM (analytics are JS-injected on
-    // consent, not baked into the markup).
+    // Served HTML must never reference analytics (JS-injected on consent, not
+    // baked into the markup): no loader host, no gtag( bootstrap, no GA4 id.
     if (
       ext === '.html' &&
-      (content.includes(GTM_LOADER_HOST) ||
-        content.includes('GTM-') ||
+      (content.includes(ANALYTICS_LOADER_HOST) ||
+        /\bgtag\s*\(/.test(content) ||
+        /\bG-[A-Z0-9]{6,}\b/.test(content) ||
         content.includes('gtm.start'))
     ) {
-      failures.push(`${rel}: GTM must not appear in served HTML`)
+      failures.push(`${rel}: analytics must not appear in served HTML`)
     }
   }
 
@@ -192,7 +194,7 @@ if (isCli()) {
   console.log(
     `verify:dist OK — ${result.checked} files checked, no source maps, ` +
       'no secrets, no private/Railway endpoints, no forbidden services or CTAs, ' +
-      'no eval, only the approved consent-gated GTM container, all assets ' +
+      'no eval, only the approved consent-gated GA4 measurement id, all assets ' +
       'within budget.',
   )
 }

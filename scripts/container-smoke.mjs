@@ -16,9 +16,9 @@
  *   - JS/CSS are served with correct Content-Type; source maps are 404
  *   - the exact security-header contract from docs/WEB_SECURITY_HEADERS.md
  *     is present on every response, with connect-src bound to the SAME API
- *     origin the build was given (plus the fixed Google Tag Manager / Analytics
+ *     origin the build was given (plus the fixed Google Analytics gtag.js
  *     hosts) — no unsafe-eval, no unsafe-inline, no Railway
- *   - analytics are consent-gated: GTM is never hardcoded into the served HTML
+ *   - analytics are consent-gated: GA4 is never hardcoded into the served HTML
  *   - hashed assets are immutable; HTML revalidates (fast rollback)
  *   - deployment mode (STRATEVA_DEPLOYMENT_ENV) is mandatory: staging starts
  *     and sends no HSTS, production starts and sends exactly the documented
@@ -304,13 +304,15 @@ async function runStagingAssertions(base) {
     'Privacy — Strateva Payment Router',
   )
 
-  // Consent-gated analytics: GTM must NOT be hardcoded into the served HTML —
+  // Consent-gated analytics: GA4 must NOT be hardcoded into the served HTML —
   // it is injected by first-party JS only after the visitor opts in. The
-  // served markup must reference neither the GTM domain nor an inline
-  // gtm.start bootstrap.
+  // served markup must reference no analytics loader host, no gtag( bootstrap
+  // and no GA4 measurement id.
   assert(
-    !home.body.includes('googletagmanager') && !home.body.includes('gtm.start'),
-    'GTM must not appear in the served HTML (it is consent-gated, JS-injected)',
+    !home.body.includes('googletagmanager') &&
+      !/\bgtag\s*\(/.test(home.body) &&
+      !/\bG-[A-Z0-9]{6,}\b/.test(home.body),
+    'analytics must not appear in the served HTML (consent-gated, JS-injected)',
   )
 
   // Rollback-friendly caching: HTML revalidates on every request.

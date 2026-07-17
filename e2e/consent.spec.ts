@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 // Google Tag Manager is intercepted so the test never contacts Google; we only
 // assert WHETHER the browser attempted to load it. This exercises the real CSP
-// (which allows googletagmanager.com) and the real consent gate end to end.
+// (which allows googletagmanager.com for gtag.js) and the real consent gate.
 async function trackGtm(page: import('@playwright/test').Page): Promise<string[]> {
   const requested: string[] = []
   await page.route('https://www.googletagmanager.com/**', (route) => {
@@ -10,7 +10,7 @@ async function trackGtm(page: import('@playwright/test').Page): Promise<string[]
     return route.fulfill({
       status: 200,
       contentType: 'application/javascript',
-      body: '/* intercepted GTM */',
+      body: '/* intercepted gtag.js */',
     })
   })
   return requested
@@ -29,7 +29,7 @@ test('analytics load ONLY after the visitor accepts', async ({ page }) => {
   await page.getByRole('button', { name: 'Accept analytics' }).click()
   await expect(banner).toBeHidden()
   await expect.poll(() => gtm.length).toBeGreaterThan(0)
-  expect(gtm[0]).toContain('id=GTM-KR2W2R68')
+  expect(gtm[0]).toContain('id=G-PNQWWXSPZX')
 })
 
 test('rejecting consent loads no analytics', async ({ page }) => {
@@ -59,7 +59,7 @@ test('a remembered acceptance re-loads analytics with no banner', async ({
   await expect.poll(() => gtm.length).toBeGreaterThan(0)
 })
 
-test('consent can be withdrawn from Privacy choices; GTM is not reloaded', async ({
+test('consent can be withdrawn from Privacy choices; analytics is not reloaded', async ({
   page,
 }) => {
   const gtm = await trackGtm(page)
@@ -74,7 +74,7 @@ test('consent can be withdrawn from Privacy choices; GTM is not reloaded', async
   const dialog = page.getByRole('dialog', { name: 'Analytics consent' })
   await expect(dialog).toBeVisible()
 
-  // Withdraw → the page reloads and GTM is NOT requested again.
+  // Withdraw → the page reloads and analytics is NOT requested again.
   await page.getByRole('button', { name: 'Withdraw consent' }).click()
   await page.waitForLoadState('load')
   await expect(

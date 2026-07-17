@@ -57,13 +57,13 @@ Content-Security-Policy:
   (scheme + host + port), the same value baked into `VITE_API_URL` at build
   time. One environment, one origin — never a wildcard, never a list of
   fallbacks.
-- The Google Tag Manager / Google Analytics hosts are the **only** third-party
-  sources, added to support **consent-gated** analytics (see "Analytics and
-  consent" below). They are fixed literals — GTM's script host on `script-src`,
-  its and GA's collection endpoints on `img-src`/`connect-src`. No other
-  third party is allowed.
-- The app still inlines **no** scripts or styles: the GTM bootstrap is a
-  first-party module (`src/analytics/gtm.ts`), not an inline `<script>`, so
+- The Google Analytics hosts are the **only** third-party sources, added to
+  support **consent-gated** analytics (see "Analytics and consent" below). They
+  are fixed literals — `gtag.js` is served from `www.googletagmanager.com`
+  (`script-src`), and GA4's collection endpoints are on `img-src`/`connect-src`.
+  No other third party is allowed.
+- The app still inlines **no** scripts or styles: the GA4 bootstrap is a
+  first-party module (`src/analytics/ga.ts`), not an inline `<script>`, so
   **no `unsafe-inline` and no `unsafe-eval`** are needed. Any new tag/vendor
   requiring them must update this contract first.
 
@@ -109,34 +109,59 @@ CSP, HSTS or caching. The CI container smoke test asserts both modes.
 
 ## Analytics and consent
 
-Strateva loads **Google Tag Manager** (container `GTM-KR2W2R68`, which in turn
-loads Google Analytics) for anonymous audience measurement. It is **opt-in and
-consent-gated** to satisfy GDPR/ePrivacy prior-consent rules:
+Strateva loads **Google Analytics 4** (measurement id `G-PNQWWXSPZX`, via
+`gtag.js`) for optional audience measurement. This is **not anonymous** — GA4
+assigns a pseudonymous client id (the `_ga` cookie) and processes IP, device,
+browser and pages viewed — so it is **opt-in and consent-gated** to satisfy
+GDPR/ePrivacy prior-consent rules:
 
 - Nothing analytics-related loads on first paint. A consent banner
   (`src/components/ConsentBanner.tsx`) asks the visitor to accept or reject.
-- GTM is injected by a **first-party module** (`src/analytics/gtm.ts`) **only**
+- **Restricted to audience measurement (Consent Mode v2).** On load the module
+  grants **only** `analytics_storage`; `ad_storage`, `ad_user_data` and
+  `ad_personalization` stay `denied`, and `allow_google_signals` /
+  `allow_ad_personalization_signals` are set to `false`. No Ads, remarketing or
+  personalization. On withdrawal a Consent Mode `update` sets analytics and all
+  advertising states to `denied` before cookies are cleared and the page
+  reloads.
+- GA4 is injected by a **first-party module** (`src/analytics/ga.ts`) **only**
   after an explicit "Accept" — never before, and never on "Reject". A granted
   choice is remembered (a single non-personal flag in `localStorage`,
-  `strateva-analytics-consent`) and re-loads GTM on the next visit; a denied or
-  absent choice loads nothing and sets no analytics cookie.
-- Because the bootstrap is first-party (not an inline `<script>`), the CSP
-  needs no `unsafe-inline`. The GTM/GA hosts above are the only additions.
-- The served HTML never hardcodes GTM: the CI container smoke test asserts the
-  markup contains neither the GTM domain nor a `gtm.start` bootstrap, and
-  `scripts/verify-dist.mjs` fails the build on any GTM container id other than
-  the approved `GTM-KR2W2R68`, any direct `gtag(` bootstrap, a hardcoded
-  `google-analytics.com` reference, or the GTM loader appearing outside the JS
-  bundle — proving analytics cannot fire without consent and no other analytics
-  can slip in.
+  `strateva-analytics-consent`) and re-loads analytics on the next visit; a
+  denied or absent choice loads nothing and sets no analytics cookie.
+- `gtag.js` is fetched from `www.googletagmanager.com/gtag/js`; GA4's collection
+  goes to the `google-analytics.com` endpoints. Because the bootstrap is
+  first-party (not an inline `<script>`), the CSP needs no `unsafe-inline`, and
+  the GA hosts above are the only additions.
+- The served HTML never hardcodes analytics: the CI container smoke test asserts
+  the markup contains no loader host, no `gtag(` bootstrap and no GA4 id, and
+  `scripts/verify-dist.mjs` fails the build on any GA4 measurement id other than
+  the approved `G-PNQWWXSPZX`, any GTM container id, a hardcoded
+  `google-analytics.com` reference, or the `gtag.js` loader appearing outside
+  the JS bundle — proving analytics cannot fire without consent and no other
+  analytics can slip in.
 - **Withdrawal is as easy as granting.** A permanent "Privacy choices" control
   in the footer re-opens the banner. Withdrawing a granted consent stores
   `denied`, removes GA's `_ga`/`_ga_*` cookies (best-effort) and reloads the
-  page so the already-executed GTM/GA script and state are discarded and not
+  page so the already-executed analytics script and state are discarded and not
   loaded again — no need to clear all site data.
-- The `/legal/privacy` and `/legal/cookies` pages disclose this. If the GTM
-  container is changed to fire tags beyond GA (e.g. Ads), the CSP and those
-  pages must be updated first.
+- The `/legal/privacy` and `/legal/cookies` pages disclose this. If GA4 is
+  configured to fire beyond basic audience measurement (e.g. Ads/remarketing),
+  the CSP and those pages must be updated first.
+
+### Manual GA property review (required, outside this repo)
+
+The code restricts GA4 to audience measurement, but the **property settings**
+are managed in Google Analytics, not here. Before relying on this in a real
+environment, confirm in the GA Admin for `G-PNQWWXSPZX` that it:
+
+- has **Google Signals** disabled for this use;
+- is **not linked to Google Ads** or other advertising products;
+- has **no remarketing, Ads personalization or advertising features** enabled;
+- uses **data retention and data-sharing** settings consistent with the
+  published privacy/cookies pages.
+
+This cannot be asserted from code; it is a manual, out-of-band verification.
 
 ## Source maps policy
 

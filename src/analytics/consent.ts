@@ -4,7 +4,7 @@
  * The ONLY persistent value this site stores is this consent preference — a
  * single non-personal flag — so the user's choice survives reloads. No amounts,
  * API responses or personal data are ever stored (see AGENTS.md). Analytics
- * (Google Tag Manager) load ONLY after an explicit `granted` choice; until then,
+ * (Google Analytics 4) load ONLY after an explicit `granted` choice; until then,
  * and on `denied`, nothing is loaded and no analytics cookie is set.
  */
 
