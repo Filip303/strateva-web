@@ -21,10 +21,13 @@ export default function HowItWorks() {
         available in the destination bank.
       </p>
       <p className="muted">
-        Every provider, fee, rate, time and reliability figure in the
-        simulation is synthetic. The simulator shows how such a decision can
-        be made — it never moves money. The exact meaning of each figure is
-        explained in the <Link to="/methodology">Methodology</Link>.
+        Providers, fees, FX rates and reliability figures in the simulation
+        are synthetic. Timing is labelled per leg with its provenance —
+        declarative, observed or fallback — and an observed leg carries
+        measured latency evidence, never a transfer executed by Strateva. The
+        simulator shows how such a decision can be made — it never moves
+        money. The exact meaning of each figure is explained in the{' '}
+        <Link to="/methodology">Methodology</Link>.
       </p>
     </>
   )

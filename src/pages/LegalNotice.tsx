@@ -9,7 +9,10 @@ export default function LegalNotice() {
       <p>
         Strateva Payment Router is a demonstrative simulation. It is not a
         financial service, executes no payments, custodies no funds and
-        provides no financial advice. All displayed data is synthetic.
+        provides no financial advice. Fees, FX rates and reliability figures
+        are synthetic; per-leg timing is labelled with its provenance
+        (declarative, observed or fallback), and an observed leg contains
+        measured latency evidence, never a transfer executed by Strateva.
       </p>
     </>
   )

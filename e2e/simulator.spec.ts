@@ -64,7 +64,7 @@ test('simulates a route end to end against mocked API responses', async ({
     recommended.getByText(/Chain confirmation target: safe/),
   ).toBeVisible()
   await expect(
-    recommended.getByText('Fallback reason code: evidence_stale'),
+    recommended.getByText('Fallback reason code: stale'),
   ).toBeVisible()
   await expect(
     recommended.getByText('Observed as of 2026-07-01, valid until 2026-08-01'),

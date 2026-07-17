@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { makeQuoteResponse, corridorsFixture } from '../test/fixtures'
+import {
+  corridorsFixture,
+  makeDetailedQuoteResponse,
+  makeQuoteResponse,
+} from '../test/fixtures'
 import {
   corridorsResponseSchema,
   publicRouteResultSchema,
@@ -276,5 +280,61 @@ describe('contract guarantees', () => {
     const body = quoteBody()
     body.future_additive_field = 'ignored'
     expect(quoteResponseSchema.safeParse(body).success).toBe(true)
+  })
+})
+
+describe('temporal coherence (engine invariants)', () => {
+  function route(body: Mutable): Mutable {
+    return body.recommended_route as Mutable
+  }
+
+  it('accepts the coherent detailed fixture (positive control)', () => {
+    expect(
+      quoteResponseSchema.safeParse(makeDetailedQuoteResponse()).success,
+    ).toBe(true)
+  })
+
+  it('rejects total_time_seconds different from expected_time_seconds', () => {
+    const body = quoteBody()
+    route(body).total_time_seconds = 999
+    expect(quoteResponseSchema.safeParse(body).success).toBe(false)
+  })
+
+  it('rejects a latency_breakdown expected sum that does not match the route', () => {
+    const body = quoteBody()
+    const breakdown = route(body).latency_breakdown as Mutable[]
+    breakdown[0].expected_seconds = 601
+    expect(quoteResponseSchema.safeParse(body).success).toBe(false)
+  })
+
+  it('rejects a latency_breakdown conservative sum that does not match the route', () => {
+    const body = quoteBody()
+    const breakdown = route(body).latency_breakdown as Mutable[]
+    breakdown[0].conservative_seconds = 899
+    expect(quoteResponseSchema.safeParse(body).success).toBe(false)
+  })
+
+  it('rejects latency_legs sums that do not match the route totals', () => {
+    const body = quoteBody()
+    const legs = route(body).latency_legs as Mutable[]
+    legs[0].expected_seconds = 601
+    expect(quoteResponseSchema.safeParse(body).success).toBe(false)
+  })
+
+  it('rejects a different number of steps and latency_legs', () => {
+    const body = quoteBody()
+    const steps = route(body).steps as Mutable[]
+    // Duplicate the step (positions 0,1): sums and per-leg values stay
+    // untouched, so only the count invariant can catch this.
+    steps.push({ ...structuredClone(steps[0]), position: 1 })
+    expect(quoteResponseSchema.safeParse(body).success).toBe(false)
+  })
+
+  it('rejects steps and latency_legs whose positions do not correspond', () => {
+    const body = quoteBody()
+    const legs = route(body).latency_legs as Mutable[]
+    // Same count and same sums; only the position pairing is broken.
+    legs[0].position = 1
+    expect(quoteResponseSchema.safeParse(body).success).toBe(false)
   })
 })

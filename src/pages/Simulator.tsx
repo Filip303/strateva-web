@@ -78,9 +78,11 @@ export default function Simulator() {
     <>
       <h1>Simulator</h1>
       <p className="muted">
-        Compare simulated routes for an amount and an objective. Every figure
-        comes from the public API and is synthetic. Advanced options (limits
-        and exclusions) arrive in a later change.
+        Compare simulated routes for an amount and an objective. The whole
+        result is a simulation and moves no money: fees, FX and reliability
+        are synthetic, and each leg's timing is labelled with its own
+        provenance — declarative, observed or fallback. Advanced options
+        (limits and exclusions) arrive in a later change.
       </p>
 
       {corridors.isPending && <p>Loading corridors…</p>}

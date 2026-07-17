@@ -88,11 +88,18 @@ describe('leg breakdown', () => {
 })
 
 describe('route times', () => {
-  it('renders the three route times as distinct magnitudes', async () => {
+  it('renders the three route time fields as separately labelled magnitudes', async () => {
     const { recommended } = await renderResults()
-    expect(recommended).toHaveTextContent('Expected time: 600 s (~10 min)')
-    expect(recommended).toHaveTextContent('Conservative time: 900 s (~15 min)')
-    expect(recommended).toHaveTextContent('Fiat available in: 1200 s (~20 min)')
+    // Three DISTINCT fields with their own labels and semantics. Their
+    // values come verbatim from the API (conservative and fiat-available
+    // may legitimately coincide; expected differs from conservative here).
+    expect(recommended).toHaveTextContent('Expected time: 1140 s (~19 min)')
+    expect(recommended).toHaveTextContent('Conservative time: 1920 s (~32 min)')
+    expect(recommended).toHaveTextContent('Fiat available in: 1920 s (~32 min)')
+    const labels = ['Expected time:', 'Conservative time:', 'Fiat available in:']
+    for (const label of labels) {
+      expect(within(recommended).getAllByText(new RegExp(label))).toHaveLength(1)
+    }
   })
 
   it('keeps each alternative with its own expires_at', async () => {
@@ -123,7 +130,7 @@ describe('latency detail', () => {
       'Latency data: fallback (observed evidence rejected; declarative times kept)',
     )
     expect(
-      within(recommended).getByText('Fallback reason code: evidence_stale'),
+      within(recommended).getByText('Fallback reason code: stale'),
     ).toBeVisible()
   })
 
@@ -181,6 +188,40 @@ describe('methodology link and copy rules', () => {
     expect(document.body.textContent).not.toMatch(/p95/i)
     expect(document.body.textContent).not.toMatch(
       /send money|transfer now|pay now/i,
+    )
+  })
+
+  it('distinguishes the economic simulation from observed timing provenance', async () => {
+    const { user, recommended } = await renderResults()
+    await user.click(
+      within(recommended).getByRole('button', { name: /Latency detail/ }),
+    )
+    // Observed provenance is shown as observed…
+    expect(
+      within(recommended).getAllByText('Latency data: observed'),
+    ).toHaveLength(1)
+    // …and no absolute "everything is synthetic" claim contradicts it.
+    const text = document.body.textContent ?? ''
+    expect(text).not.toMatch(/every (figure|value)[^.]*synthetic/i)
+    expect(text).not.toMatch(/all displayed data is synthetic/i)
+    expect(text).not.toMatch(/no (figure|value)[^.]*real market observation/i)
+    // The simulation / no-funds-movement notice stays visible.
+    const notices = screen.getAllByText(
+      'Simulation only. Strateva does not execute, custody or transmit funds.',
+    )
+    expect(notices.length).toBeGreaterThanOrEqual(1)
+    for (const notice of notices) expect(notice).toBeVisible()
+
+    // The Methodology page carries no absolute claim either.
+    await user.click(
+      screen.getByRole('link', { name: 'How to read these figures — Methodology' }),
+    )
+    await screen.findByRole('heading', { level: 1, name: 'Methodology' })
+    const methodologyText = document.body.textContent ?? ''
+    expect(methodologyText).not.toMatch(/every (figure|value)[^.]*synthetic/i)
+    expect(methodologyText).not.toMatch(/all displayed data is synthetic/i)
+    expect(methodologyText).not.toMatch(
+      /no (figure|value)[^.]*real market observation/i,
     )
   })
 

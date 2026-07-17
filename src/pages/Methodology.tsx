@@ -6,9 +6,12 @@ export default function Methodology() {
       <h1>Methodology</h1>
       <p>
         How to read the figures the <Link to="/simulator">simulator</Link>{' '}
-        shows. Every value comes from the public API and is synthetic — no
-        figure on this site is a real market observation, and nothing here
-        moves money.
+        shows. Everything comes from the public API, the whole result is a
+        simulation, and nothing here moves money. Fees, FX and reliability
+        are synthetic; timing figures carry a per-leg provenance —
+        declarative, observed or fallback — and an observed leg holds
+        measured latency evidence, never a real transfer executed by
+        Strateva.
       </p>
 
       <h2>Total cost</h2>
