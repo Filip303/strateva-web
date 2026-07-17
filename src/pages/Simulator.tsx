@@ -75,15 +75,22 @@ export default function Simulator() {
   const data = quote.data
 
   return (
-    <>
-      <h1>Simulator</h1>
-      <p className="muted">
-        Compare simulated routes for an amount and an objective. The whole
-        result is a simulation and moves no money: fees, FX and reliability
-        are synthetic, and each leg's timing is labelled with its own
-        provenance — declarative, observed or fallback. Advanced options
-        (limits and exclusions) arrive in a later change.
-      </p>
+    <div className="simulator">
+      <header className="sim-header">
+        <div className="sim-header-top">
+          <h1>Simulator</h1>
+          <span className="sim-badge">Simulation — no money moves</span>
+        </div>
+        <p className="muted sim-lead">
+          Compare international payment routes for an amount and an objective,
+          then open any route to see every leg. The whole result is a
+          simulation: fees, FX and reliability are synthetic, and each leg's
+          timing is labelled with its own provenance — declarative, observed or
+          fallback. Strateva compares routes; it never executes, custodies,
+          converts or transmits funds. Advanced options (limits and exclusions)
+          arrive in a later change.
+        </p>
+      </header>
 
       {corridors.isPending && <p>Loading corridors…</p>}
       {corridors.isError && (
@@ -107,67 +114,85 @@ export default function Simulator() {
       )}
 
       {corridors.isSuccess && corridorList.length > 0 && selected && (
-        <form onSubmit={onSubmit} noValidate>
-          <div className="field">
-            <label htmlFor="corridor">Corridor</label>
-            <select
-              id="corridor"
-              value={selected.corridor_id}
-              onChange={(event) => setCorridorId(event.target.value)}
-            >
-              {corridorList.map((corridor) => (
-                <option key={corridor.corridor_id} value={corridor.corridor_id}>
-                  {corridorLabel(corridor)}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="sim-panel">
+          <form className="sim-form" onSubmit={onSubmit} noValidate>
+            <div className="sim-fields">
+              <div className="field">
+                <label htmlFor="corridor">Corridor</label>
+                <select
+                  id="corridor"
+                  value={selected.corridor_id}
+                  onChange={(event) => setCorridorId(event.target.value)}
+                >
+                  {corridorList.map((corridor) => (
+                    <option
+                      key={corridor.corridor_id}
+                      value={corridor.corridor_id}
+                    >
+                      {corridorLabel(corridor)}
+                    </option>
+                  ))}
+                </select>
+                <p className="field-hint muted">
+                  Countries and currencies come from the selected corridor.
+                </p>
+              </div>
 
-          <div className="field">
-            <label htmlFor="amount">Amount ({selected.source_currency})</label>
-            <input
-              id="amount"
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              value={amount}
-              aria-invalid={formError !== null}
-              aria-describedby={formError !== null ? 'amount-error' : undefined}
-              onChange={(event) => setAmount(event.target.value)}
-            />
-          </div>
-
-          <fieldset className="field">
-            <legend>Objective</legend>
-            {OBJECTIVES.map((value) => (
-              <label key={value} className="radio-option">
+              <div className="field">
+                <label htmlFor="amount">
+                  Amount ({selected.source_currency})
+                </label>
                 <input
-                  type="radio"
-                  name="objective"
-                  value={value}
-                  checked={objective === value}
-                  onChange={() => setObjective(value)}
-                />{' '}
-                {OBJECTIVE_LABELS[value]}
-              </label>
-            ))}
-          </fieldset>
+                  id="amount"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={amount}
+                  aria-invalid={formError !== null}
+                  aria-describedby={
+                    formError !== null ? 'amount-error' : undefined
+                  }
+                  onChange={(event) => setAmount(event.target.value)}
+                />
+              </div>
 
-          {formError && (
-            <div role="alert" id="amount-error" className="alert">
-              {formError}
+              <fieldset className="field sim-objective">
+                <legend>Objective</legend>
+                <div className="radio-grid">
+                  {OBJECTIVES.map((value) => (
+                    <label key={value} className="radio-option">
+                      <input
+                        type="radio"
+                        name="objective"
+                        value={value}
+                        checked={objective === value}
+                        onChange={() => setObjective(value)}
+                      />{' '}
+                      {OBJECTIVE_LABELS[value]}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
             </div>
-          )}
 
-          <button
-            type="submit"
-            className="cta"
-            disabled={quote.isPending || retrySeconds > 0}
-          >
-            Compare routes
-          </button>
-          <p className="sim-inline-note">⚠ {SIMULATION_NOTICE}</p>
-        </form>
+            {formError && (
+              <div role="alert" id="amount-error" className="alert">
+                {formError}
+              </div>
+            )}
+
+            <div className="sim-actions">
+              <button
+                type="submit"
+                className="cta"
+                disabled={quote.isPending || retrySeconds > 0}
+              >
+                Compare routes
+              </button>
+            </div>
+            <p className="sim-inline-note">⚠ {SIMULATION_NOTICE}</p>
+          </form>
+        </div>
       )}
 
       <div
@@ -193,26 +218,29 @@ export default function Simulator() {
           <section aria-label="Results" className="results">
             <h2>Results</h2>
             <p className="sim-inline-note">⚠ {data.disclaimer}</p>
-            <p>
-              Sent: {data.sent_amount} {data.source_currency} →{' '}
-              {data.destination_currency}
-            </p>
-            <p>Objective: {OBJECTIVE_LABELS[data.objective]}</p>
-            <p>Recommended route valid until: {data.quote_expires_at}</p>
-            <p>
-              <Link to="/methodology">
-                How to read these figures — Methodology
-              </Link>
-            </p>
+            <div className="results-summary">
+              <p>
+                Sent: {data.sent_amount} {data.source_currency} →{' '}
+                {data.destination_currency}
+              </p>
+              <p>Objective: {OBJECTIVE_LABELS[data.objective]}</p>
+              <p>Recommended route valid until: {data.quote_expires_at}</p>
+              <p>
+                <Link to="/methodology">
+                  How to read these figures — Methodology
+                </Link>
+              </p>
+            </div>
             <RouteCard
               title="Recommended"
               route={data.recommended_route}
               sourceCurrency={data.source_currency}
               destinationCurrency={data.destination_currency}
+              variant="recommended"
             />
             {data.alternative_routes.length > 0 && (
-              <>
-                <h3 className="muted">
+              <div className="alternatives">
+                <h3 className="muted alternatives-title">
                   Alternatives — each expires at its own time
                 </h3>
                 {data.alternative_routes.map((route, index) => (
@@ -222,9 +250,10 @@ export default function Simulator() {
                     route={route}
                     sourceCurrency={data.source_currency}
                     destinationCurrency={data.destination_currency}
+                    variant="alternative"
                   />
                 ))}
-              </>
+              </div>
             )}
             {data.warnings.length > 0 && (
               <ul className="route-warnings">
@@ -236,6 +265,6 @@ export default function Simulator() {
           </section>
         )}
       </div>
-    </>
+    </div>
   )
 }

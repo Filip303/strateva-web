@@ -179,15 +179,19 @@ describe('methodology link and copy rules', () => {
     const { user } = await renderResults()
     expect(document.body.textContent).not.toMatch(/p95/i)
     expect(document.body.textContent).not.toMatch(
-      /send money|transfer now|pay now/i,
+      /send money|transfer now|pay now|execute route/i,
     )
+    // None of the prohibited execution CTAs is present as a control.
+    expect(screen.queryByRole('button', { name: 'Execute route' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pay' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Execute route' })).toBeNull()
     await user.click(
       screen.getByRole('link', { name: 'How to read these figures — Methodology' }),
     )
     await screen.findByRole('heading', { level: 1, name: 'Methodology' })
     expect(document.body.textContent).not.toMatch(/p95/i)
     expect(document.body.textContent).not.toMatch(
-      /send money|transfer now|pay now/i,
+      /send money|transfer now|pay now|execute route/i,
     )
   })
 

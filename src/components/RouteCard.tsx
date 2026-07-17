@@ -2,6 +2,26 @@ import { useId, useState, type ReactNode } from 'react'
 import type { PublicRouteResult } from '../api/schemas'
 import { formatSeconds } from '../lib/format'
 
+/** A single label/value metric tile. Label and value are separate elements for
+ * visual hierarchy, but kept on one text run (with a real space between them)
+ * so the exact "Label: value" copy stays matchable and screen-reader friendly. */
+function Metric({
+  label,
+  value,
+  primary = false,
+}: {
+  label: string
+  value: string
+  primary?: boolean
+}) {
+  return (
+    <li className={primary ? 'metric metric--primary' : 'metric'}>
+      <span className="metric-label">{label}</span>{' '}
+      <span className="metric-value">{value}</span>
+    </li>
+  )
+}
+
 /** Keyboard-accessible disclosure: a real button with aria-expanded that
  * toggles a labelled region. */
 function CollapsibleSection({
@@ -145,41 +165,67 @@ export default function RouteCard({
   route,
   sourceCurrency,
   destinationCurrency,
+  variant = 'alternative',
 }: {
   title: string
   route: PublicRouteResult
   sourceCurrency: string
   destinationCurrency: string
+  variant?: 'recommended' | 'alternative'
 }) {
+  const recommended = variant === 'recommended'
   return (
-    <section className="route-card" aria-label={title}>
-      <h3>{title}</h3>
-      <ul>
-        <li>
-          Receives (approx.): {route.estimated_received_amount}{' '}
-          {destinationCurrency}
-        </li>
-        <li>
-          Total cost: {route.total_cost} {destinationCurrency} (
-          {route.total_cost_percentage} %)
-        </li>
-        <li>
-          Effective FX rate (simulated): {route.effective_fx_rate}{' '}
-          {destinationCurrency} per {sourceCurrency}
-        </li>
-        <li>Expected time: {formatSeconds(route.expected_time_seconds)}</li>
-        <li>
-          Conservative time: {formatSeconds(route.conservative_time_seconds)}
-        </li>
-        <li>
-          Fiat available in:{' '}
-          {formatSeconds(route.time_to_fiat_available_seconds)}
-        </li>
-        <li>Reliability: {route.reliability_score}</li>
-        <li>Operates 24/7: {route.operates_24_7 ? 'Yes' : 'No'}</li>
-        <li>Expires: {route.expires_at}</li>
+    <section
+      className={`route-card route-card--${variant}`}
+      aria-label={title}
+    >
+      <div className="route-card-head">
+        <h3 className="route-title">{title}</h3>
+        {recommended && (
+          <span className="route-flag">Best match for your objective</span>
+        )}
+      </div>
+
+      {/* Every figure comes verbatim from the validated API response; the UI
+          never computes, invents or fills in a missing value. */}
+      <ul className="route-metrics">
+        <Metric
+          label="Receives (approx.):"
+          value={`${route.estimated_received_amount} ${destinationCurrency}`}
+          primary
+        />
+        <Metric
+          label="Total cost:"
+          value={`${route.total_cost} ${destinationCurrency} (${route.total_cost_percentage} %)`}
+          primary
+        />
+        <Metric
+          label="Fiat available in:"
+          value={formatSeconds(route.time_to_fiat_available_seconds)}
+          primary
+        />
+        <Metric
+          label="Effective FX rate (simulated):"
+          value={`${route.effective_fx_rate} ${destinationCurrency} per ${sourceCurrency}`}
+        />
+        <Metric
+          label="Expected time:"
+          value={formatSeconds(route.expected_time_seconds)}
+        />
+        <Metric
+          label="Conservative time:"
+          value={formatSeconds(route.conservative_time_seconds)}
+        />
+        <Metric label="Reliability:" value={String(route.reliability_score)} />
+        <Metric
+          label="Operates 24/7:"
+          value={route.operates_24_7 ? 'Yes' : 'No'}
+        />
+        <Metric label="Expires:" value={route.expires_at} />
       </ul>
-      <p>Why: {route.explanation}</p>
+
+      <p className="route-why">Why: {route.explanation}</p>
+
       <CollapsibleSection title="Leg breakdown">
         <StepsList route={route} />
       </CollapsibleSection>
