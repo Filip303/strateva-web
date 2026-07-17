@@ -39,6 +39,10 @@ FROM caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac523
 
 COPY --from=build /tmp/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv/dist
+# Staging-only robots body, kept OUTSIDE /srv/dist so the production
+# file_server (rooted at /srv/dist) can never serve it and it never reaches
+# the built bundle. Caddy rewrites /robots.txt to it only in staging mode.
+COPY --from=build /app/hosting/robots.staging.txt /srv/robots.staging.txt
 # The entrypoint enforces the mandatory deployment mode before Caddy binds.
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
