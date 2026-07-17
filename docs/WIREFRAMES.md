@@ -1,261 +1,263 @@
-# Wireframes textuales — Simulador (v1)
+# Textual wireframes — Simulator (v1)
 
-> Solo simulación. El disclaimer de «Strateva no ejecuta, custodia ni mueve
-> fondos» acompaña **siempre** al CTA y a los resultados. Todos los datos
-> provienen del contrato HTTP público.
+> Simulation only. The "Strateva does not execute, custody or move funds"
+> disclaimer **always** accompanies the CTA and the results. All data comes
+> from the public HTTP contract.
 
-Wireframes de baja fidelidad (solo estructura, no diseño). Cubren escritorio y
-móvil, el formulario del simulador, el estado de carga, el resultado recomendado
-con alternativas, el desglose por tramo y los estados de error (404, 422, 429,
-5xx y timeout).
+Low-fidelity wireframes (structure only, no design). They cover desktop and
+mobile, the simulator form, the loading state, the recommended result with
+alternatives, the per-leg breakdown and the error states (404, 422, 429, 5xx
+and timeout). All interface copy is **English-only**.
 
-Leyenda: `[ ]` campo, `( )` control/botón, `▸` elemento plegable, `···` repetible.
-Los nombres entre `{ }` son campos reales del contrato (ver `API_UI_MAPPING.md`).
-Las monedas de los ejemplos (EUR, MXN) provienen del corredor elegido
-(`source_currency` / `destination_currency`), nunca de valores fijos.
+Legend: `[ ]` field, `( )` control/button, `▸` collapsible element, `···`
+repeatable. Names inside `{ }` are real contract fields (see
+`API_UI_MAPPING.md`). The currencies in the examples (EUR, MXN) come from the
+selected corridor (`source_currency` / `destination_currency`), never from
+hardcoded values.
 
 ---
 
-## 1. Simulador — escritorio (dos columnas)
+## 1. Simulator — desktop (two columns)
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Strateva Payment Router · Simulador                          │
-│  ⚠ Solo simulación. No se mueve dinero real.                  │
+│  Strateva Payment Router · Simulator                          │
+│  ⚠ Simulation only. No real money moves.                      │
 ├───────────────────────────┬──────────────────────────────────┤
-│  FORMULARIO               │  RESULTADOS                        │
+│  FORM                     │  RESULTS                           │
 │                           │                                    │
-│  Corredor                 │  (vacío al inicio: texto guía      │
-│  [ EUR → MXN        ▾ ]   │   "Rellena el formulario y pulsa   │
-│   (opciones desde API)    │    Comparar rutas")                │
+│  Corridor                 │  (empty at start: guide text       │
+│  [ EUR → MXN        ▾ ]   │   "Fill in the form and press      │
+│   (options from API)      │    Compare routes")                │
 │                           │                                    │
-│  Importe                  │                                    │
+│  Amount                   │                                    │
 │  [ 1000        ] EUR      │                                    │
 │                           │                                    │
-│  Objetivo                 │                                    │
-│  ( ) Priorizar coste      │                                    │
-│  ( ) Priorizar velocidad  │                                    │
-│  ( ) Priorizar fiabilidad │                                    │
-│  (•) Equilibrado          │                                    │
+│  Objective                │                                    │
+│  ( ) Prioritize cost      │                                    │
+│  ( ) Prioritize speed     │                                    │
+│  ( ) Prioritize reliab.   │                                    │
+│  (•) Balanced             │                                    │
 │                           │                                    │
-│  ▸ Opciones avanzadas     │                                    │
-│    (límites: coste máx.,  │                                    │
-│     tiempo máx., fiab.    │                                    │
-│     mín., exclusiones)    │                                    │
+│  ▸ Advanced options       │                                    │
+│    (limits: max cost,     │                                    │
+│     max time, min         │                                    │
+│     reliability, excl.)   │                                    │
 │                           │                                    │
-│  ( Comparar rutas )       │                                    │
-│  ⚠ Resultado simulado.    │                                    │
+│  ( Compare routes )       │                                    │
+│  ⚠ Simulated result.      │                                    │
 └───────────────────────────┴──────────────────────────────────┘
 ```
 
-- «Corredor» se rellena con `GET /api/v1/corridors` (nunca hardcode).
-- Moneda de importe = `source_currency` del corredor elegido.
-- Las etiquetas de objetivo («Priorizar coste», «Priorizar velocidad»,
-  «Priorizar fiabilidad», «Equilibrado») mapean al enum fijo
-  `cheapest`/`fastest`/`most_reliable`/`balanced` (la API no ofrece un endpoint
-  de metadatos de objetivos; ver `API_UI_MAPPING.md`).
-- «Opciones avanzadas» mapea a `maximum_cost_percentage`,
+- "Corridor" is populated from `GET /api/v1/corridors` (never hardcoded).
+- Amount currency = `source_currency` of the selected corridor.
+- The objective labels ("Prioritize cost", "Prioritize speed", "Prioritize
+  reliability", "Balanced") map to the fixed enum
+  `cheapest`/`fastest`/`most_reliable`/`balanced` (the API offers no
+  objectives-metadata endpoint; see `API_UI_MAPPING.md`).
+- "Advanced options" maps to `maximum_cost_percentage`,
   `maximum_conservative_time_minutes`, `minimum_reliability`,
   `excluded_providers`, `excluded_networks`.
-- CTA permitido: **«Comparar rutas»** (alternativa: «Simular ruta»). El
-  disclaimer aparece pegado al CTA.
+- Allowed CTA: **"Compare routes"** (alternative: "Simulate route"). The
+  disclaimer sits right next to the CTA.
 
-## 2. Simulador — móvil (una columna, apilado)
+## 2. Simulator — mobile (single column, stacked)
 
 ```
 ┌─────────────────────────┐
-│ Strateva · Simulador    │
-│ ⚠ Solo simulación.      │
+│ Strateva · Simulator    │
+│ ⚠ Simulation only.      │
 ├─────────────────────────┤
-│ Corredor [ EUR→MXN ▾ ]  │
-│ Importe  [ 1000 ] EUR   │
-│ Objetivo                │
-│  (•) Equilibrado ▾      │
-│ ▸ Opciones avanzadas    │
-│ ( Comparar rutas )      │
-│ ⚠ Resultado simulado.   │
+│ Corridor [ EUR→MXN ▾ ]  │
+│ Amount   [ 1000 ] EUR   │
+│ Objective               │
+│  (•) Balanced ▾         │
+│ ▸ Advanced options      │
+│ ( Compare routes )      │
+│ ⚠ Simulated result.     │
 ├─────────────────────────┤
-│ RESULTADOS (debajo)     │
-│  … (tras enviar)        │
+│ RESULTS (below)         │
+│  … (after submitting)   │
 └─────────────────────────┘
 ```
 
-En móvil los resultados se muestran **debajo** del formulario; el foco salta al
-bloque de resultados al completarse la llamada. El selector de objetivo
-despliega las cuatro etiquetas («Priorizar coste», «Priorizar velocidad»,
-«Priorizar fiabilidad», «Equilibrado»).
+On mobile the results render **below** the form; focus jumps to the results
+block when the call completes. The objective selector expands to the four
+labels ("Prioritize cost", "Prioritize speed", "Prioritize reliability",
+"Balanced").
 
 ---
 
-## 3. Estado de carga
+## 3. Loading state
 
 ```
 ┌──────────────────────────────────────┐
-│ RESULTADOS                            │
-│  ⏳ Comparando rutas simuladas…       │
-│  [░░░░░░░░░  ] (indicador indeterm.)  │
-│  (el botón queda deshabilitado)       │
+│ RESULTS                               │
+│  ⏳ Comparing simulated routes…       │
+│  [░░░░░░░░░  ] (indeterminate)        │
+│  (the button stays disabled)          │
 └──────────────────────────────────────┘
 ```
 
-- Se muestra mientras `POST /api/v1/routes/quote` está en curso.
-- Botón deshabilitado para evitar envíos duplicados.
-- Debe existir un **timeout** de cliente (ver estado Timeout).
+- Shown while `POST /api/v1/routes/quote` is in flight.
+- Button disabled to prevent duplicate submissions.
+- A client-side **timeout** must exist (see the Timeout state).
 
 ---
 
-## 4. Resultado — ruta recomendada + alternativas
+## 4. Result — recommended route + alternatives
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ RESULTADOS                                                     │
-│ ⚠ Resultado simulado. Nada se ejecuta ni se envía.             │
-│ Enviado: {sent_amount} EUR → MXN · Objetivo: Equilibrado       │
-│ Validez de la recomendada hasta: {quote_expires_at}            │
+│ RESULTS                                                        │
+│ ⚠ Simulated result. Nothing is executed or sent.               │
+│ Sent: {sent_amount} EUR → MXN · Objective: Balanced            │
+│ Recommended route valid until: {quote_expires_at}              │
 │                                                                │
-│ ┌─ RECOMENDADA ─────────────────────────────────────────┐  │
-│ │ Recibe (aprox.): {estimated_received_amount} MXN         │  │
-│ │ Coste total: {total_cost} MXN ({total_cost_percentage} %)│  │
-│ │ FX efectivo (simulado): {effective_fx_rate} MXN por EUR  │  │
-│ │ Tiempo esperado: {expected_time_seconds}                 │  │
-│ │ Tiempo conservador: {conservative_time_seconds}          │  │
-│ │ Fiat disponible en ~: {time_to_fiat_available_seconds}   │  │
-│ │ Fiabilidad: {reliability_score}                          │  │
-│ │ 24/7: {operates_24_7 ? "Sí" : "No"}                      │  │
-│ │ Caduca: {expires_at}                                     │  │
-│ │ Por qué: {explanation}                                   │  │
+│ ┌─ RECOMMENDED ─────────────────────────────────────────┐  │
+│ │ Receives (approx.): {estimated_received_amount} MXN      │  │
+│ │ Total cost: {total_cost} MXN ({total_cost_percentage} %) │  │
+│ │ Effective FX rate (simulated): {effective_fx_rate}       │  │
+│ │   MXN per EUR                                            │  │
+│ │ Expected time: {expected_time_seconds}                   │  │
+│ │ Conservative time: {conservative_time_seconds}           │  │
+│ │ Fiat available in ~: {time_to_fiat_available_seconds}    │  │
+│ │ Reliability: {reliability_score}                         │  │
+│ │ 24/7: {operates_24_7 ? "Yes" : "No"}                     │  │
+│ │ Expires: {expires_at}                                    │  │
+│ │ Why: {explanation}                                       │  │
 │ │ ⚠ {warnings…}                                            │  │
-│ │ ▸ Ver desglose por tramo                                 │  │
+│ │ ▸ View leg breakdown                                     │  │
 │ └──────────────────────────────────────────────────────────┘  │
 │                                                                │
-│ Alternativas — cada una con su propia caducidad {expires_at}   │
-│ ┌─ Alternativa #1 ──────────────────────────────────────┐ ··· │
-│ │ Recibe ~ {estimated_received_amount} MXN             │     │
-│ │ Coste {total_cost} MXN ({total_cost_percentage} %)   │     │
-│ │ Tiempo · Fiabilidad · Caduca: {expires_at}           │     │
-│ │ ⚠ {warnings…}  ▸ Ver desglose por tramo              │     │
+│ Alternatives — each with its own expiry {expires_at}           │
+│ ┌─ Alternative #1 ──────────────────────────────────────┐ ··· │
+│ │ Receives ~ {estimated_received_amount} MXN           │     │
+│ │ Cost {total_cost} MXN ({total_cost_percentage} %)    │     │
+│ │ Time · Reliability · Expires: {expires_at}           │     │
+│ │ ⚠ {warnings…}  ▸ View leg breakdown                  │     │
 │ └────────────────────────────────────────────────────┘     │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- Los nombres entre `{ }` son campos reales de `PublicRouteResult` /
-  `QuoteResponse` (ver `API_UI_MAPPING.md`). No se muestra ninguna cifra que la
-  API no devuelva, y **ninguna cifra financiera aparece sin su moneda/activo**.
-- `{quote_expires_at}` es la **validez efectiva de la ruta recomendada** (el
-  mínimo entre su propia caducidad y el TTL del servidor). Cada ruta — también
-  cada alternativa — tiene su **propio** `{expires_at}`; el wireframe no debe
-  sugerir que todas caducan a la vez en `quote_expires_at`.
-- «FX efectivo (simulado)» = `estimated_received_amount / sent_amount`, tasa
-  efectiva de extremo a extremo tras todos los costes; **no** es un tipo real
-  de mercado.
-- Los tiempos se presentan de forma legible pero honesta: «conservador», nunca
-  «p95» (ver `TERMINOLOGY_AND_COPY.md`).
-- Cada ruta con pasos on-chain arrastra su warning de datos simulados.
+- Names inside `{ }` are real fields of `PublicRouteResult` / `QuoteResponse`
+  (see `API_UI_MAPPING.md`). No figure the API does not return is shown, and
+  **no financial figure appears without its currency/asset**.
+- `{quote_expires_at}` is the **effective validity of the recommended route**
+  (the minimum of its own expiry and the server TTL). Every route — including
+  every alternative — has its **own** `{expires_at}`; the wireframe must not
+  suggest that all of them expire at `quote_expires_at`.
+- "Effective FX rate (simulated)" = `estimated_received_amount / sent_amount`,
+  the end-to-end effective rate after all costs; it is **not** a real market
+  rate.
+- Times are presented readably but honestly: "conservative", never "p95" (see
+  `TERMINOLOGY_AND_COPY.md`).
+- Every route with on-chain steps carries its simulated-data warning.
 
 ---
 
-## 5. Desglose por tramo (plegable dentro de cada ruta)
+## 5. Leg breakdown (collapsible inside each route)
 
-Unidades por tramo: `fixed_fee` y `percentage_fee_amount` en el activo de
-**entrada** (`source_node.asset`); `spread_cost` en el activo de **salida**
-(`destination_node.asset`); `amount_in` / `amount_out` en entrada / salida.
+Units per leg: `fixed_fee` and `percentage_fee_amount` in the **input** asset
+(`source_node.asset`); `spread_cost` in the **output** asset
+(`destination_node.asset`); `amount_in` / `amount_out` in input / output.
 
 ```
-▾ Desglose por tramo
- ┌ Tramo 0 · sepa_transfer · mock_sepa ───────────────┐
+▾ Leg breakdown
+ ┌ Leg 0 · sepa_transfer · mock_sepa ─────────────────┐
  │ EUR (ES, sepa) → EUR (ES, provider_internal)       │
- │ Entra 1000.00 EUR → Sale 1000.00 EUR               │
- │ Comisión fija 0 EUR · % 0 EUR · spread 0 EUR        │
- │ Tiempo ~3600 s · Fiabilidad 0.995                  │
+ │ In 1000.00 EUR → Out 1000.00 EUR                   │
+ │ Fixed fee 0 EUR · % fee 0 EUR · spread 0 EUR        │
+ │ Time ~3600 s · Reliability 0.995                   │
  └────────────────────────────────────────────────────┘
- ┌ Tramo 2 · fx_conversion · mock_globalremit ───────┐ ···
+ ┌ Leg 2 · fx_conversion · mock_globalremit ─────────┐ ···
  │ EUR (provider_internal) → MXN (provider_internal)  │
- │ Entra 999.50 EUR → Sale 19344.34 MXN               │
- │ Comisión fija 0 EUR · % 4.50 EUR ·                  │
+ │ In 999.50 EUR → Out 19344.34 MXN                   │
+ │ Fixed fee 0 EUR · % fee 4.50 EUR ·                  │
  │ spread 58.21 MXN                                   │
- │ Tiempo ~600 s · Fiabilidad 0.99                    │
+ │ Time ~600 s · Reliability 0.99                     │
  └────────────────────────────────────────────────────┘
- (opcional en UI) Latencia por tramo, desde `latency_legs`:
-   componente · esperado/conservador · disponibilidad ·
-   procedencia pública (observed / declarative / fallback) ·
-   objetivo de confirmación (included/safe/finalized) —
-   NO es fiat disponible.
+ (optional in UI) Per-leg latency, from `latency_legs`:
+   component · expected/conservative · availability ·
+   public provenance (observed / declarative / fallback) ·
+   confirmation target (included/safe/finalized) —
+   NOT fiat availability.
 ```
 
-- Campos por tramo = `RouteStep` (position, source/destination node, provider,
+- Per-leg fields = `RouteStep` (position, source/destination node, provider,
   operation_type, fixed_fee, percentage_fee_amount, spread_cost,
   estimated_time_seconds, reliability_score, amount_in, amount_out).
-- La latencia por tramo usa `latency_legs` (campo obligatorio de la API;
-  mostrarla es decisión de UI): component, expected/conservative, availability,
+- Per-leg latency uses `latency_legs` (a required API field; showing it is a
+  UI decision): component, expected/conservative, availability,
   `latency_source` (`observed`/`declarative`), `provenance`
   (`observed`/`declarative`/`fallback`), confirmation_target, fallback_reason.
-  El DTO público **no** trae ningún campo `source` ni el valor «sintético» por
-  tramo.
+  The public DTO carries **no** `source` field and no per-leg "synthetic"
+  value.
 
 ---
 
-## 6. Estados de error
+## 6. Error states
 
-Todos se muestran en el bloque de resultados, conservando el formulario y el
-disclaimer. El texto es humano; el detalle técnico crudo no se expone.
+All of them render in the results block, keeping the form and the disclaimer.
+The text is human; raw technical detail is not exposed.
 
-### 6.1 · 404 — corredor no modelado
+### 6.1 · 404 — corridor not modelled
 ```
-┌ RESULTADOS ─────────────────────────────────────┐
-│ ⚠ Ese corredor no está disponible en la          │
-│   simulación. Elige otro de la lista.            │
-│ ( Volver a elegir corredor )                     │
-└──────────────────────────────────────────────────┘
+┌ RESULTS ────────────────────────────────────────┐
+│ ⚠ That corridor is not available in the          │
+│   simulation. Pick another from the list.        │
+│ ( Choose another corridor )                      │
+└─────────────────────────────────────────────────┘
 ```
-Origen: `POST /api/v1/routes/quote` → 404 (corredor no modelado) o corredor
-ausente en `GET /api/v1/corridors`.
+Source: `POST /api/v1/routes/quote` → 404 (corridor not modelled) or corridor
+missing from `GET /api/v1/corridors`.
 
-### 6.2 · 422 — entrada inválida o sin ruta viable
+### 6.2 · 422 — invalid input or no viable route
 ```
-┌ RESULTADOS ─────────────────────────────────────┐
-│ ⚠ No hay ninguna ruta que cumpla lo pedido, o    │
-│   algún dato no es válido.                        │
-│   {detalle legible: p. ej. "el importe debe ser  │
-│    mayor que 0" o "ninguna ruta bajo tus límites"}│
-│ ( Ajustar importe / objetivo / límites )         │
-└──────────────────────────────────────────────────┘
+┌ RESULTS ────────────────────────────────────────┐
+│ ⚠ No route satisfies the request, or some       │
+│   input is invalid.                              │
+│   {readable detail: e.g. "amount must be         │
+│    greater than 0" or "no route within your      │
+│    limits"}                                      │
+│ ( Adjust amount / objective / limits )           │
+└─────────────────────────────────────────────────┘
 ```
-Origen: validación de formulario o 422 del backend (input inválido o ninguna
-ruta bajo los guardrails).
+Source: form validation or a backend 422 (invalid input or no route within the
+guardrails).
 
-### 6.3 · 429 — demasiadas peticiones
+### 6.3 · 429 — too many requests
 ```
-┌ RESULTADOS ─────────────────────────────────────┐
-│ ⚠ Demasiadas simulaciones seguidas. Espera y     │
-│   vuelve a intentarlo.                           │
-│ ( Reintentar ) — deshabilitado durante el        │
-│   tiempo indicado por la cabecera Retry-After    │
-└──────────────────────────────────────────────────┘
+┌ RESULTS ────────────────────────────────────────┐
+│ ⚠ Too many simulations in a row. Wait a moment  │
+│   and try again.                                 │
+│ ( Retry ) — disabled for the time indicated      │
+│   by the Retry-After header                      │
+└─────────────────────────────────────────────────┘
 ```
-Origen: rate limiting del backend. **Obligatorio**: leer y respetar la cabecera
-`Retry-After` de la respuesta — el botón de reintento queda deshabilitado ese
-tiempo. El reintento es siempre **manual** (pulsado por la persona usuaria);
-nunca un bucle automático de reintentos.
+Source: backend rate limiting. **Mandatory**: read and honor the `Retry-After`
+response header — the retry button stays disabled for that long. Retrying is
+always **manual** (pressed by the user); never an automatic retry loop.
 
-### 6.4 · 5xx — error del servidor / datos de mercado no disponibles
+### 6.4 · 5xx — server error / market data unavailable
 ```
-┌ RESULTADOS ─────────────────────────────────────┐
-│ ⚠ La simulación no está disponible ahora mismo.  │
-│   Inténtalo de nuevo en un momento.              │
-│ ( Reintentar )                                   │
-└──────────────────────────────────────────────────┘
+┌ RESULTS ────────────────────────────────────────┐
+│ ⚠ The simulation is unavailable right now.       │
+│   Try again in a moment.                         │
+│ ( Retry )                                        │
+└─────────────────────────────────────────────────┘
 ```
-Origen: 500/502/503 (incl. 503 «market data temporarily unavailable» / «quote
-expired before it could be served»). Mensaje genérico; sin trazas técnicas.
-Reintento manual.
+Source: 500/502/503 (incl. 503 "market data temporarily unavailable" / "quote
+expired before it could be served"). Generic message; no technical traces.
+Manual retry.
 
-### 6.5 · Timeout — sin respuesta a tiempo
+### 6.5 · Timeout — no response in time
 ```
-┌ RESULTADOS ─────────────────────────────────────┐
-│ ⚠ La simulación ha tardado demasiado. Puede ser  │
-│   algo temporal.                                 │
-│ ( Reintentar )                                   │
-└──────────────────────────────────────────────────┘
+┌ RESULTS ────────────────────────────────────────┐
+│ ⚠ The simulation took too long. This may be      │
+│   temporary.                                     │
+│ ( Retry )                                        │
+└─────────────────────────────────────────────────┘
 ```
-Origen: se supera el timeout de cliente antes de recibir respuesta. La petición
-se cancela y se ofrece reintentar (manual).
+Source: the client-side timeout elapses before a response arrives. The request
+is cancelled and a (manual) retry is offered.

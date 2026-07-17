@@ -1,85 +1,85 @@
-# Mapa del sitio — Strateva Web (v1)
+# Sitemap — Strateva Web (v1)
 
-> Solo simulación. Ninguna página ejecuta, custodia ni mueve fondos. Todas las
-> páginas que muestran datos los obtienen del contrato HTTP público.
+> Simulation only. No page executes, custodies or moves funds. Every page that
+> shows data fetches it from the public HTTP contract.
 
-Estructura de navegación de la primera versión. Todas las rutas son públicas y
-accesibles sin registro. Las URL son orientativas y están pensadas para ser
-localizables (i18n): el prefijo de idioma (p. ej. `/es/`) podrá anteponerse
-cuando se añadan traducciones.
+Navigation structure of the first version. All routes are public and reachable
+without sign-up. **All URL paths are English-only**: v1 ships no `/es/` or any
+other locale prefix, no localized routes and no hreflang.
 
-## Árbol de páginas
+## Page tree
 
 ```
-/                     Inicio
-/simulador            Simulador
-/como-funciona        Cómo funciona
-/corredores           Corredores
-/metodologia          Metodología
-/acerca-de            Acerca de
-/legal/aviso-legal    Aviso legal
-/legal/privacidad     Privacidad
+/                     Home
+/simulator            Simulator
+/how-it-works         How it works
+/corridors            Corridors
+/methodology          Methodology
+/about                About
+/legal/legal-notice   Legal notice
+/legal/privacy        Privacy
 /legal/cookies        Cookies
-/404                  Página no encontrada (catch-all)
-—                     Estado de error (no es una URL; ver nota)
+/404                  Not found (catch-all)
+—                     Error state (not a URL; see note)
 ```
 
-## Páginas
+## Pages
 
-### Inicio (`/`)
-Presentación del laboratorio: qué es Strateva, disclaimer de simulación visible,
-y un acceso directo destacado al simulador. CTA permitido: **«Comparar rutas»**
-o **«Simular ruta»** (nunca «Enviar»/«Pagar»/«Transferir»). Puede resumir los
-corredores disponibles obtenidos de la API, sin inventar ninguno.
+### Home (`/`)
+Presentation of the laboratory: what Strateva is, a visible simulation
+disclaimer, and a prominent shortcut to the simulator. Allowed CTA:
+**"Compare routes"** or **"Simulate route"** (never "Send money" / "Pay" /
+"Transfer now"). It may summarize the available corridors fetched from the
+API, without inventing any.
 
-### Simulador (`/simulador`)
-Núcleo del producto. Formulario (corredor, importe, objetivo) que llama a
-`POST /api/v1/routes/quote` y muestra la ruta recomendada, las alternativas y el
-desglose por tramo. Contiene los estados de carga y de error (ver
-`WIREFRAMES.md`). El disclaimer acompaña al CTA y a los resultados.
+### Simulator (`/simulator`)
+Core of the product. A form (corridor, amount, objective) that calls
+`POST /api/v1/routes/quote` and shows the recommended route, the alternatives
+and the per-leg breakdown. Contains the loading and error states (see
+`WIREFRAMES.md`). The disclaimer accompanies the CTA and the results.
 
-### Cómo funciona (`/como-funciona`)
-Explicación divulgativa del recorrido del dinero simulado: origen → tramos
-(transferencia, FX, on/off-ramp, payout) → fiat disponible en destino. Aclara la
-diferencia entre confirmación en cadena y fiat disponible. No expone detalles
-internos del backend.
+### How it works (`/how-it-works`)
+Plain-language explanation of the simulated money's journey: origin → legs
+(transfer, FX, on/off-ramp, payout) → fiat available at destination. Clarifies
+the difference between chain confirmation and fiat availability. Exposes no
+backend internals.
 
-### Corredores (`/corredores`)
-Lista de los corredores disponibles obtenida de `GET /api/v1/corridors`, con
-detalle por corredor desde `GET /api/v1/corridors/{id}` (familias de ruta, pares
-de mercado, redes). Data-driven: no se codifican corredores en el frontend.
+### Corridors (`/corridors`)
+List of available corridors fetched from `GET /api/v1/corridors`, with
+per-corridor detail from `GET /api/v1/corridors/{id}` (route families, market
+pairs, networks). Data-driven: no corridors are hardcoded in the frontend.
 
-### Metodología (`/metodologia`)
-Cómo se puntúan y ordenan las rutas (coste/tiempo/fiabilidad, objetivos,
-normalización relativa al conjunto de candidatas), y qué significan «tiempo
-esperado», «tiempo conservador» y «fiat disponible». Declara honestamente las
-limitaciones (datos sintéticos, ranking relativo).
+### Methodology (`/methodology`)
+How routes are scored and ranked (cost/time/reliability, objectives,
+normalization relative to the candidate set), and what "expected time",
+"conservative time" and "fiat available" mean. Honestly states the
+limitations (synthetic data, relative ranking).
 
-### Acerca de (`/acerca-de`)
-Propósito del proyecto, naturaleza de portafolio/laboratorio, enlace al
-repositorio backend público. Sin métricas ni promesas inventadas.
+### About (`/about`)
+Purpose of the project, its portfolio/laboratory nature, link to the public
+backend repository. No invented metrics or promises.
 
-### Legales
-- **Aviso legal** (`/legal/aviso-legal`): naturaleza no financiera del servicio,
-  ausencia de movimiento de fondos, limitación de responsabilidad.
-- **Privacidad** (`/legal/privacidad`): la web no requiere registro y no
-  persiste importes ni respuestas; qué datos (mínimos) se tratan.
-- **Cookies** (`/legal/cookies`): en v1 no hay analytics ni tracking; se declara
-  el uso (previsiblemente nulo o estrictamente técnico).
+### Legal
+- **Legal notice** (`/legal/legal-notice`): non-financial nature of the
+  service, absence of any movement of funds, limitation of liability.
+- **Privacy** (`/legal/privacy`): the website requires no sign-up and persists
+  no amounts or responses; which (minimal) data is processed.
+- **Cookies** (`/legal/cookies`): v1 has no analytics or tracking; usage is
+  declared (expected to be none or strictly technical).
 
-### Página 404 (`/404` y catch-all)
-Página de «no encontrado» para rutas inexistentes. Ofrece volver al inicio o al
-simulador. Mantiene el disclaimer y la navegación.
+### 404 page (`/404` and catch-all)
+"Not found" page for non-existent routes. Offers a way back to Home or to the
+Simulator. Keeps the disclaimer and the navigation.
 
-### Estado de error (transversal, no es una URL)
-No es una página con URL propia, sino un **estado de UI reutilizable** que se
-muestra dentro de la página afectada (sobre todo el simulador) cuando la API
-falla. Cubre 422, 429, 5xx y timeout, además de un 404 funcional cuando el
-corredor no está modelado. Detalle de cada estado en `WIREFRAMES.md`.
+### Error state (transversal, not a URL)
+Not a page with its own URL but a **reusable UI state** shown inside the
+affected page (mainly the simulator) when the API fails. Covers 422, 429, 5xx
+and timeout, plus a functional 404 when the corridor is not modelled. Each
+state is detailed in `WIREFRAMES.md`.
 
-## Navegación
+## Navigation
 
-- **Cabecera:** enlace a Inicio, Simulador, Cómo funciona, Corredores,
-  Metodología, Acerca de.
-- **Pie:** enlaces legales (aviso legal, privacidad, cookies), enlace al
-  repositorio backend público y recordatorio del disclaimer de simulación.
+- **Header:** links to Home, Simulator, How it works, Corridors, Methodology,
+  About.
+- **Footer:** legal links (legal notice, privacy, cookies), link to the public
+  backend repository and a reminder of the simulation disclaimer.

@@ -1,112 +1,115 @@
-# Contrato de producto — Strateva Web (v1)
+# Product contract — Strateva Web (v1)
 
-> **Solo simulación. Strateva no ejecuta, custodia, convierte ni transmite
-> fondos.** Todos los datos mostrados (proveedores, comisiones, FX, tiempos,
-> fiabilidad) son sintéticos y provienen de un contrato HTTP público de solo
-> lectura.
+> **Simulation only. Strateva does not execute, custody, convert or transmit
+> funds.** All displayed data (providers, fees, FX, times, reliability) is
+> synthetic and comes from a read-only public HTTP contract.
 
-Este documento recoge las **decisiones de producto aprobadas** para la primera
-versión de la web. Es el contrato funcional que la implementación React deberá
-respetar. No incluye diseño visual definitivo ni decisiones de código.
+This document records the **approved product decisions** for the first version
+of the website. It is the functional contract the React implementation must
+respect. It includes no final visual design and no code decisions.
 
-## 1. Identidad y posicionamiento
+## 1. Identity and positioning
 
-- **Nombre del producto:** «Strateva Payment Router».
-- **Posicionamiento:** un **laboratorio / simulador** público de enrutamiento
-  de pagos internacionales. No es una pasarela de pago, no es un remesador, no
-  es un servicio financiero autorizado.
-- **Promesa honesta:** enseñar *cómo se decide* la mejor ruta entre varias
-  infraestructuras de pago (banca, SEPA, SWIFT, proveedores, FX, raíles de
-  stablecoin) comparando **coste, tiempo y fiabilidad** sobre datos simulados.
+- **Product name:** "Strateva Payment Router".
+- **Positioning:** a public **laboratory / simulator** for international
+  payment routing. It is not a payment gateway, not a remittance service, not
+  an authorized financial service.
+- **Honest promise:** show *how the best route is decided* across several
+  payment infrastructures (banking, SEPA, SWIFT, providers, FX, stablecoin
+  rails) by comparing **cost, time and reliability** over simulated data.
 
-## 2. Decisiones de producto aprobadas
+## 2. Approved product decisions
 
-1. **Web pública sin registro.** No hay login, cuentas, perfiles ni sesión de
-   usuario. Cualquiera puede usar el simulador sin identificarse.
-2. **Sin pagos.** No se cobra, no se envía dinero, no hay pasarela. El único
-   verbo de la web es *simular / comparar*.
-3. **Solo lectura del contrato público.** La web consume exclusivamente la API
-   REST pública del backend `Filip303/strateva-payment-router`. No escribe
-   estado en el backend.
-4. **Datos siempre desde la API.** Los corredores, rutas, comisiones, tiempos,
-   FX y fiabilidad se obtienen **en tiempo de ejecución desde la API**. Nada de
-   esto se codifica de forma fija («hardcode») en el frontend. Excepción
-   explícita: los **objetivos** son un enum fijo del contrato público — la API
-   no los expone como metadatos — y el frontend los implementa y valida
-   (ver §4).
-5. **Idioma inicial español**, con estructura preparada para i18n.
-6. **Simulación explícita en toda la superficie.** El disclaimer de «solo
-   simulación» acompaña al CTA y a los resultados; los datos on-chain se marcan
-   como simulados.
+1. **Public website with no sign-up.** No login, accounts, profiles or user
+   sessions. Anyone can use the simulator without identifying themselves.
+2. **No payments.** Nothing is charged, no money is sent, there is no gateway.
+   The website's only verb is *simulate / compare*.
+3. **Read-only use of the public contract.** The website consumes exclusively
+   the public REST API of the `Filip303/strateva-payment-router` backend. It
+   writes no state to the backend.
+4. **Data always from the API.** Corridors, routes, fees, times, FX and
+   reliability are fetched **at runtime from the API**. None of this is
+   hardcoded in the frontend. Explicit exception: the **objectives** are a
+   fixed enum of the public contract — the API does not expose them as
+   metadata — and the frontend implements and validates them (see §4).
+5. **English-only v1.** All visible product content — copy, navigation, URL
+   paths, errors, metadata and legal-page labels — is in English. No language
+   selector, localized routes or hreflang ship in v1; additional locales are
+   outside the initial launch scope.
+6. **Simulation explicit across the whole surface.** The "simulation only"
+   disclaimer accompanies the CTA and the results; on-chain data is marked as
+   simulated.
 
-## 3. Corredores iniciales
+## 3. Initial corridors
 
-- Corredores objetivo de la v1: **EUR→MXN** y **GBP→EUR**.
-- Ambos se **obtienen siempre desde la API** (`GET /api/v1/corridors`); la web
-  no asume su existencia ni sus parámetros. Si la API deja de exponer uno, la
-  web deja de ofrecerlo. Si expone más, la web puede mostrarlos sin cambios de
-  código (comportamiento data-driven).
-- La web **no inventa** corredores, pares de mercado ni orientación de FX: todo
-  procede de la respuesta de la API.
+- Target corridors for v1: **EUR→MXN** and **GBP→EUR**.
+- Both are **always fetched from the API** (`GET /api/v1/corridors`); the
+  website does not assume their existence or their parameters. If the API
+  stops exposing one, the website stops offering it. If it exposes more, the
+  website can show them without code changes (data-driven behaviour).
+- The website **invents no** corridors, market pairs or FX orientation:
+  everything comes from the API response.
 
-## 4. Objetivos de optimización
+## 4. Optimization objectives
 
-El simulador permite elegir el objetivo con el que el backend ordena las rutas
-candidatas. Los objetivos corresponden 1:1 con el enum público del backend
-(`cheapest`, `fastest`, `most_reliable`, `balanced`). Ninguno **garantiza** un
-óptimo absoluto: salvo `fastest`, son puntuaciones ponderadas sobre valores
-normalizados (min-max) respecto al conjunto de rutas candidatas.
+The simulator lets the user pick the objective the backend uses to rank the
+candidate routes. The objectives map 1:1 to the backend's public enum
+(`cheapest`, `fastest`, `most_reliable`, `balanced`). None of them
+**guarantees** an absolute optimum: except for `fastest`, they are weighted
+scores over min-max-normalized values relative to the candidate route set.
 
-| Objetivo API    | Etiqueta de producto (ES) | Semántica real del backend |
-|-----------------|---------------------------|-----------------------------|
-| `cheapest`      | Priorizar coste           | Puntuación combinada: 75 % coste, 15 % tiempo, 10 % riesgo. |
-| `fastest`       | Priorizar velocidad       | Orden lexicográfico: tiempo conservador hasta fiat disponible → tiempo esperado → coste → fiabilidad. |
-| `most_reliable` | Priorizar fiabilidad      | Puntuación combinada: 75 % riesgo, 15 % coste, 10 % tiempo. |
-| `balanced`      | Equilibrado               | Puntuación combinada: 45 % coste, 30 % tiempo, 25 % riesgo (defecto). |
+| API objective   | Product label (EN)     | Actual backend semantics |
+|-----------------|------------------------|---------------------------|
+| `cheapest`      | Prioritize cost        | Combined score: 75% cost, 15% time, 10% risk. |
+| `fastest`       | Prioritize speed       | Lexicographic order: conservative time to fiat available → expected time → cost → reliability. |
+| `most_reliable` | Prioritize reliability | Combined score: 75% risk, 15% cost, 10% time. |
+| `balanced`      | Balanced               | Combined score: 45% cost, 30% time, 25% risk (default). |
 
-- **Sin promesas de óptimo:** el copy no debe afirmar que `cheapest` devuelve
-  siempre «el coste mínimo» ni que `most_reliable` devuelve «la fiabilidad
-  máxima»: priorizan esa dimensión dentro de una puntuación combinada. Las
-  etiquetas honestas son **«Priorizar coste»**, **«Priorizar velocidad»**,
-  **«Priorizar fiabilidad»** y **«Equilibrado»**.
-- **Enum fijo, no descubrible por API:** la API **no** proporciona un endpoint
-  de metadatos para descubrir los objetivos. El frontend implementa y valida
-  exactamente estos cuatro valores del enum público; solo los **corredores** se
-  descargan dinámicamente. (Registrado como *gap* en `API_UI_MAPPING.md`.)
+- **No optimum promises:** copy must not claim that `cheapest` always returns
+  "the minimum cost" or that `most_reliable` returns "the maximum
+  reliability": they prioritize that dimension inside a combined score. The
+  honest labels are **"Prioritize cost"**, **"Prioritize speed"**,
+  **"Prioritize reliability"** and **"Balanced"**.
+- **Fixed enum, not discoverable via API:** the API provides **no** metadata
+  endpoint to discover the objectives. The frontend implements and validates
+  exactly these four values of the public enum; only the **corridors** are
+  fetched dynamically. (Recorded as a *gap* in `API_UI_MAPPING.md`.)
 
-El objetivo por defecto es **Equilibrado** (`balanced`), igual que el backend.
+The default objective is **Balanced** (`balanced`), same as the backend.
 
-## 5. Alcance de la v1 (en alcance)
+## 5. v1 scope (in scope)
 
-- Un **simulador**: formulario (corredor, importe, objetivo) → llamada a
-  `POST /api/v1/routes/quote` → ruta recomendada + alternativas + desglose.
-- Páginas informativas: cómo funciona, corredores disponibles, metodología,
-  acerca de, y páginas legales (aviso legal, privacidad, cookies).
-- Estados de error y de carga tratados como parte del producto (no como
-  detalles técnicos): 404, 422, 429, 5xx y timeout.
-- Preparación de i18n (español primero).
+- A **simulator**: form (corridor, amount, objective) → call to
+  `POST /api/v1/routes/quote` → recommended route + alternatives + breakdown.
+- Informational pages: how it works, available corridors, methodology, about,
+  and legal pages (legal notice, privacy, cookies).
+- Error and loading states treated as part of the product (not as technical
+  details): 404, 422, 429, 5xx and timeout.
+- English-only copy for the whole surface.
 
-## 6. Fuera de alcance (explícito)
+## 6. Out of scope (explicit)
 
-- Cualquier movimiento de dinero real: envíos, cobros, pagos, custodia, FX real.
-- Registro, login, cuentas de usuario o autenticación de cualquier tipo.
-- Wallets, conexión a cadenas, firma on-chain.
-- Firebase, Supabase o cualquier backend-as-a-service; analytics o tracking.
-- Persistencia de importes o respuestas en el navegador (`localStorage` u otros).
-- KYC/AML, precios reales, integraciones con proveedores reales en producción.
-- CTAs que impliquen ejecutar dinero («Enviar», «Pagar», «Transferir»).
-- Decisiones de diseño visual definitivo, elección de framework de estilos,
-  configuración de hosting y workflows de despliegue (se deciden más adelante).
+- Any real money movement: sending, charging, payments, custody, real FX.
+- Sign-up, login, user accounts or authentication of any kind.
+- Wallets, chain connections, on-chain signing.
+- Firebase, Supabase or any backend-as-a-service; analytics or tracking.
+- Persisting amounts or responses in the browser (`localStorage` or others).
+- KYC/AML, real prices, real provider integrations in production.
+- CTAs that imply executing money ("Send money", "Pay", "Transfer now").
+- Additional locales, language selector, localized routes, hreflang (future
+  localization is out of scope for v1).
+- Final visual design decisions, styling framework choice, hosting
+  configuration and deployment workflows (decided later).
 
-## 7. Principios que la implementación debe respetar
+## 7. Principles the implementation must respect
 
-- **Honestidad de datos:** no mostrar ninguna cifra que la API no devuelva; no
-  presentar datos sintéticos como observados; no usar «p95» salvo para una
-  estadística observada real (ver `TERMINOLOGY_AND_COPY.md`).
-- **Unidades siempre visibles:** ninguna cifra financiera se muestra sin su
-  moneda o activo (ver «Monedas y unidades» en `API_UI_MAPPING.md`).
-- **Data-driven:** corredores y campos de ruta se derivan de la API; los
-  objetivos son el enum fijo del contrato público, validado en el frontend.
-- **Auditabilidad:** cambios pequeños, un propósito por PR, siempre en borrador.
-- **Frontera limpia:** cero dependencias del repositorio privado; solo el
-  contrato HTTP público (ver `AGENTS.md`).
+- **Data honesty:** never show a figure the API does not return; never present
+  synthetic data as observed; never use "p95" except for a real observed
+  statistic (see `TERMINOLOGY_AND_COPY.md`).
+- **Units always visible:** no financial figure is shown without its currency
+  or asset (see "Currencies and units" in `API_UI_MAPPING.md`).
+- **Data-driven:** corridors and route fields derive from the API; the
+  objectives are the fixed public-contract enum, validated in the frontend.
+- **Auditability:** small changes, one purpose per PR, always as a draft.
+- **Clean boundary:** zero dependencies on the private repository; only the
+  public HTTP contract (see `AGENTS.md`).
