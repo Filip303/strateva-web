@@ -103,15 +103,28 @@ npm run preview   # serve the production build locally
 ## Verification
 
 ```bash
-npm run lint       # ESLint
-npm run typecheck  # strict TypeScript, no emit
-npm run test       # unit tests (Vitest + Testing Library)
-npm run build      # production build
-npm run test:e2e   # Playwright smoke tests (run npm run build first)
+npm run lint         # ESLint
+npm run typecheck    # strict TypeScript, no emit
+npm run test         # unit tests (Vitest + Testing Library)
+npm run build        # production build (no source maps)
+npm run verify:dist  # bundle checks: no maps/secrets/private endpoints, budgets
+npm run test:e2e     # Playwright: flows, axe A/AA and metadata at 5 widths
 ```
 
-The CI workflow (`.github/workflows/ci.yml`) runs exactly these steps on
-pull requests and on `main`. It verifies only — it never deploys.
+The CI workflow (`.github/workflows/ci.yml`) runs exactly these steps (plus
+`npm audit --audit-level=high`) on pull requests and on `main`. It verifies
+only — it never deploys.
+
+## Release hardening notes
+
+- HTTP responses from the API are size-capped (1 MiB, enforced incrementally
+  while streaming) on top of the 15 s timeout, with no automatic retries.
+- Security headers (CSP, HSTS, etc.) are **required but not yet deployed**:
+  the exact hosting contract lives in `docs/WEB_SECURITY_HEADERS.md`.
+- Automated accessibility scanning (axe, WCAG 2.2 A/AA tags) runs in CI on
+  every route at five widths; the pending manual checks are tracked in
+  `docs/ACCESSIBILITY_CHECKLIST.md` — passing axe is not a full-conformance
+  claim.
 
 ## Project structure
 

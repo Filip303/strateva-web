@@ -1,0 +1,13 @@
+{
+  "name": "Strateva Payment Router — Simulation Lab",
+  "short_name": "Strateva",
+  "description": "Public simulation lab for international payment routing. Simulation only: it does not execute, custody or transmit funds.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

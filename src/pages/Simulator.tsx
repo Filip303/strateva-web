@@ -131,6 +131,8 @@ export default function Simulator() {
               inputMode="decimal"
               autoComplete="off"
               value={amount}
+              aria-invalid={formError !== null}
+              aria-describedby={formError !== null ? 'amount-error' : undefined}
               onChange={(event) => setAmount(event.target.value)}
             />
           </div>
@@ -152,7 +154,7 @@ export default function Simulator() {
           </fieldset>
 
           {formError && (
-            <div role="alert" className="alert">
+            <div role="alert" id="amount-error" className="alert">
               {formError}
             </div>
           )}
@@ -168,7 +170,12 @@ export default function Simulator() {
         </form>
       )}
 
-      <div id="quote-outcome" ref={outcomeRef} tabIndex={-1}>
+      <div
+        id="quote-outcome"
+        ref={outcomeRef}
+        tabIndex={-1}
+        aria-busy={quote.isPending}
+      >
         <p aria-live="polite" className="loading-status">
           {quote.isPending ? 'Comparing simulated routes…' : ''}
         </p>

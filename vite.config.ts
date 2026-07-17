@@ -3,6 +3,10 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    // Production bundles ship no source maps (verified by verify:dist).
+    sourcemap: false,
+  },
   test: {
     environment: 'jsdom',
     globals: true,
