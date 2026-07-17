@@ -45,9 +45,12 @@ const FORBIDDEN_PATTERNS = [
   { name: 'Firebase', regex: /firebase/i },
   { name: 'Supabase', regex: /supabase/i },
   { name: 'Google login', regex: /accounts\.google\.com|google.?signin|gsi\/client/i },
+  // Google Tag Manager is intentionally present (consent-gated — it loads only
+  // after the visitor opts in; see src/analytics/). Other third-party analytics
+  // remain forbidden. GTM's own domain is deliberately NOT in this list.
   {
-    name: 'analytics/tracking',
-    regex: /googletagmanager|google-analytics|gtag\(|mixpanel|segment\.io|hotjar|plausible\.io|posthog/i,
+    name: 'non-consented analytics',
+    regex: /mixpanel|segment\.io|hotjar|plausible\.io|posthog|google-analytics\.com/i,
   },
   { name: 'prohibited CTA', regex: /send money|pay now|transfer now/i },
   { name: 'AWS access key', regex: /AKIA[0-9A-Z]{16}/ },

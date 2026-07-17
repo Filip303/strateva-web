@@ -41,11 +41,11 @@ Serve on every response (HTML, assets, and the SPA fallback), unless noted.
 ```
 Content-Security-Policy:
   default-src 'self';
-  script-src 'self';
+  script-src 'self' https://www.googletagmanager.com;
   style-src 'self';
-  img-src 'self';
+  img-src 'self' https://www.googletagmanager.com https://www.google-analytics.com;
   font-src 'self';
-  connect-src 'self' <API_ORIGIN>;
+  connect-src 'self' <API_ORIGIN> https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com;
   base-uri 'none';
   object-src 'none';
   frame-ancestors 'none';
@@ -57,10 +57,15 @@ Content-Security-Policy:
   (scheme + host + port), the same value baked into `VITE_API_URL` at build
   time. One environment, one origin — never a wildcard, never a list of
   fallbacks.
-- Scripts and styles are all first-party (the app inlines nothing and loads
-  no external fonts, images or scripts), so no `unsafe-inline`,
-  `unsafe-eval`, nonces or hashes are needed. If a future change requires
-  them, that change must update this contract first.
+- The Google Tag Manager / Google Analytics hosts are the **only** third-party
+  sources, added to support **consent-gated** analytics (see "Analytics and
+  consent" below). They are fixed literals — GTM's script host on `script-src`,
+  its and GA's collection endpoints on `img-src`/`connect-src`. No other
+  third party is allowed.
+- The app still inlines **no** scripts or styles: the GTM bootstrap is a
+  first-party module (`src/analytics/gtm.ts`), not an inline `<script>`, so
+  **no `unsafe-inline` and no `unsafe-eval`** are needed. Any new tag/vendor
+  requiring them must update this contract first.
 
 ### Strict-Transport-Security (production HTTPS only)
 
@@ -101,6 +106,28 @@ Gated by the SAME validated `STRATEVA_DEPLOYMENT_ENV` — no second variable.
 
 This is a hosting-layer concern only: it changes no page content, route,
 CSP, HSTS or caching. The CI container smoke test asserts both modes.
+
+## Analytics and consent
+
+Strateva loads **Google Tag Manager** (container `GTM-KR2W2R68`, which in turn
+loads Google Analytics) for anonymous audience measurement. It is **opt-in and
+consent-gated** to satisfy GDPR/ePrivacy prior-consent rules:
+
+- Nothing analytics-related loads on first paint. A consent banner
+  (`src/components/ConsentBanner.tsx`) asks the visitor to accept or reject.
+- GTM is injected by a **first-party module** (`src/analytics/gtm.ts`) **only**
+  after an explicit "Accept" — never before, and never on "Reject". A granted
+  choice is remembered (a single non-personal flag in `localStorage`,
+  `strateva-analytics-consent`) and re-loads GTM on the next visit; a denied or
+  absent choice loads nothing and sets no analytics cookie.
+- Because the bootstrap is first-party (not an inline `<script>`), the CSP
+  needs no `unsafe-inline`. The GTM/GA hosts above are the only additions.
+- The served HTML never hardcodes GTM: the CI container smoke test asserts the
+  markup contains neither the GTM domain nor a `gtm.start` bootstrap, proving
+  analytics cannot fire without consent.
+- The `/legal/privacy` and `/legal/cookies` pages disclose this. If the GTM
+  container is changed to fire tags beyond GA (e.g. Ads), the CSP and those
+  pages must be updated first.
 
 ## Source maps policy
 

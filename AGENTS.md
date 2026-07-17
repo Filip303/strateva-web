@@ -35,7 +35,20 @@ these rules must be rejected.
 - **Google login** or any authentication / login provider.
 - **Wallets**, chain connections, on-chain signing.
 - **Payments**, charges or any real money flow.
-- **Analytics**, telemetry or user tracking.
+
+## Analytics (consent-gated only)
+
+Anonymous audience measurement via **Google Tag Manager** (which loads Google
+Analytics) is permitted, but **only** under prior, explicit, opt-in consent
+(GDPR/ePrivacy):
+
+- Nothing loads before consent. A consent banner offers accept/reject; GTM is
+  injected by a first-party module **only** after "Accept" (see
+  `docs/WEB_SECURITY_HEADERS.md`).
+- No other analytics/telemetry/tracking vendor may be added. Adding tags beyond
+  GA, or any new third party, requires updating the CSP contract and the
+  `/legal/privacy` + `/legal/cookies` pages in the same change.
+- The legal pages must always truthfully describe what is (and is not) loaded.
 
 ## Interface language (CTAs)
 
@@ -49,6 +62,9 @@ these rules must be rejected.
 - Do **not** store user-entered amounts or API responses in `localStorage`
   (nor in `sessionStorage`, cookies or any other persistent store). The
   simulation is ephemeral.
+- The **only** value the site may persist is the analytics consent choice — a
+  single non-personal flag (`strateva-analytics-consent`) — so the user's
+  opt-in/opt-out is remembered across visits.
 
 ## Change process
 

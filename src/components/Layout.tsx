@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { applyMeta } from '../lib/meta'
+import ConsentBanner from './ConsentBanner'
 
 export const SIMULATION_NOTICE =
   'Simulation only. Strateva does not execute, custody or transmit funds.'
@@ -80,6 +81,7 @@ export default function Layout() {
         </nav>
         <p>{SIMULATION_NOTICE}</p>
       </footer>
+      <ConsentBanner />
     </div>
   )
 }

@@ -15,8 +15,10 @@
  *     the 404 page — a real HTTP 404 status is deliberately not claimed)
  *   - JS/CSS are served with correct Content-Type; source maps are 404
  *   - the exact security-header contract from docs/WEB_SECURITY_HEADERS.md
- *     is present on every response, with connect-src bound to the SAME
- *     origin the build was given — no wildcards, no unsafe-eval, no Railway
+ *     is present on every response, with connect-src bound to the SAME API
+ *     origin the build was given (plus the fixed Google Tag Manager / Analytics
+ *     hosts) — no unsafe-eval, no unsafe-inline, no Railway
+ *   - analytics are consent-gated: GTM is never hardcoded into the served HTML
  *   - hashed assets are immutable; HTML revalidates (fast rollback)
  *   - deployment mode (STRATEVA_DEPLOYMENT_ENV) is mandatory: staging starts
  *     and sends no HSTS, production starts and sends exactly the documented
@@ -51,9 +53,14 @@ const VERIFY_RAILWAY = fileURLToPath(
 )
 
 const EXPECTED_CSP =
-  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; " +
+  "default-src 'self'; " +
+  "script-src 'self' https://www.googletagmanager.com; " +
+  "style-src 'self'; " +
+  "img-src 'self' https://www.googletagmanager.com https://www.google-analytics.com; " +
   "font-src 'self'; " +
-  `connect-src 'self' ${FAKE_ORIGIN}; ` +
+  `connect-src 'self' ${FAKE_ORIGIN} https://www.googletagmanager.com ` +
+  'https://www.google-analytics.com https://*.google-analytics.com ' +
+  'https://*.analytics.google.com; ' +
   "base-uri 'none'; object-src 'none'; frame-ancestors 'none'; " +
   "form-action 'self'; upgrade-insecure-requests"
 const EXPECTED_HSTS = 'max-age=31536000; includeSubDomains'
@@ -231,7 +238,11 @@ function assertSecurityHeaders(headers, where) {
     `${where}: CSP mismatch.\n  expected: ${EXPECTED_CSP}\n  actual:   ${headers.get('content-security-policy')}`,
   )
   const csp = headers.get('content-security-policy')
-  for (const forbidden of ['unsafe-eval', 'unsafe-inline', '*', 'railway']) {
+  // No `unsafe-*` and no Railway host. A bare `*` wildcard source is not
+  // asserted here because the analytics allowlist legitimately uses subdomain
+  // wildcards (https://*.google-analytics.com); the exact CSP equality above
+  // already pins every source, so a stray wildcard could not slip in.
+  for (const forbidden of ['unsafe-eval', 'unsafe-inline', 'railway']) {
     assert(!csp.includes(forbidden), `${where}: CSP contains "${forbidden}"`)
   }
   assert(
@@ -291,6 +302,15 @@ async function runStagingAssertions(base) {
     base,
     '/legal/privacy',
     'Privacy — Strateva Payment Router',
+  )
+
+  // Consent-gated analytics: GTM must NOT be hardcoded into the served HTML —
+  // it is injected by first-party JS only after the visitor opts in. The
+  // served markup must reference neither the GTM domain nor an inline
+  // gtm.start bootstrap.
+  assert(
+    !home.body.includes('googletagmanager') && !home.body.includes('gtm.start'),
+    'GTM must not appear in the served HTML (it is consent-gated, JS-injected)',
   )
 
   // Rollback-friendly caching: HTML revalidates on every request.

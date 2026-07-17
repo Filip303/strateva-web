@@ -8,8 +8,28 @@ export default function Privacy() {
       </p>
       <p>
         The website requires no sign-up and stores no amounts or simulation
-        results in your browser. It sets no cookies and runs no analytics or
-        tracking.
+        results in your browser. The simulation is ephemeral.
+      </p>
+      <h2>Analytics (opt-in)</h2>
+      <p>
+        With your consent, we use Google Tag Manager (which loads Google
+        Analytics) for anonymous audience measurement. It loads{' '}
+        <strong>only after you press “Accept analytics”</strong> in the consent
+        banner; if you reject or ignore it, no analytics script or cookie is
+        loaded. The legal basis is your consent, which you can withhold or
+        withdraw at any time by clearing your site data and reloading.
+      </p>
+      <p>
+        When enabled, Google Analytics processes standard technical data (such
+        as IP address, device and browser, and pages viewed) as a processor on
+        our behalf; Google is a third party with its own privacy terms. We do
+        not collect names, accounts or payment data — there are none: Strateva
+        is a simulation and moves no money.
+      </p>
+      <p>
+        The only value we persist is your consent choice, a single non-personal
+        flag (<code>strateva-analytics-consent</code>). We run no advertising or
+        cross-site tracking.
       </p>
     </>
   )
