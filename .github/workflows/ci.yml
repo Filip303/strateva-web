@@ -51,6 +51,24 @@ jobs:
       - name: E2E smoke tests
         run: npm run test:e2e
 
+  # Hosting regression: build the Railway/Caddy image with a fake,
+  # unresolvable API origin and verify the full serving contract (routing,
+  # security headers, caching, HSTS gating, fail-fast build validation) on
+  # loopback. No external service is contacted and no secret is needed.
+  # This verifies only — it never deploys anything.
+  container-smoke:
+    name: Container build and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Build image and run container smoke test
+        run: node scripts/container-smoke.mjs
+
   # Portability regression: the build + dist verification must also work on
   # Windows (native paths via fileURLToPath). Playwright is not re-run here.
   verify-dist-windows:

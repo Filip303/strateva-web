@@ -1,0 +1,19 @@
+# Keep the build context minimal and free of anything the image build does
+# not need. Env files are excluded so a local .env can never leak into the
+# image: the ONLY input is the VITE_API_URL build argument.
+.git
+.github
+node_modules
+dist
+test-results
+playwright-report
+coverage
+.env
+.env.*
+e2e
+docs
+Dockerfile
+.dockerignore
+railway.toml
+README.md
+AGENTS.md
