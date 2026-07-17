@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { corridorsFixture, makeQuoteResponse } from '../test/fixtures'
 import {
   fetchCorridors,
+  MAX_RESPONSE_BYTES,
   parseRetryAfter,
   REQUEST_TIMEOUT_MS,
   requestQuote,
@@ -196,19 +197,13 @@ describe('timeout covers the whole body', () => {
     vi.useFakeTimers()
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (_url: unknown, init?: RequestInit) => {
-        const stalled = {
-          ok: true,
-          status: 200,
-          headers: new Headers(),
-          json: () =>
-            new Promise((_resolve, reject) => {
-              init?.signal?.addEventListener('abort', () =>
-                reject(new DOMException('aborted', 'AbortError')),
-              )
-            }),
-        }
-        return stalled as unknown as Response
+      vi.fn(async () => {
+        const stalled = new ReadableStream<Uint8Array>({
+          start() {
+            // Never enqueue, never close: headers arrived but the body stalls.
+          },
+        })
+        return new Response(stalled, { status: 200 })
       }),
     )
     const pending = requestQuote(QUOTE_BODY)
@@ -223,6 +218,75 @@ describe('timeout covers the whole body', () => {
       vi.fn(async () => new Response('not-json{', { status: 200 })),
     )
     await expectApiError(fetchCorridors(), 'contract')
+  })
+})
+
+describe('bounded response size (MAX_RESPONSE_BYTES)', () => {
+  const encoder = new TextEncoder()
+
+  function streamOf(chunks: Uint8Array[]): ReadableStream<Uint8Array> {
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk)
+        controller.close()
+      },
+    })
+  }
+
+  it('rejects a declared Content-Length above the limit without reading the body', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response('{}', {
+          status: 200,
+          headers: { 'Content-Length': String(MAX_RESPONSE_BYTES + 1) },
+        }),
+      ),
+    )
+    const error = await expectApiError(fetchCorridors(), 'contract')
+    // Sanitized: the public message never mentions sizes or bodies.
+    expect(error.message).not.toMatch(/\d/)
+  })
+
+  it('cancels a chunked body the moment it exceeds the limit', async () => {
+    const chunk = encoder.encode('x'.repeat(600 * 1024))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(streamOf([chunk, chunk]), { status: 200 })),
+    )
+    await expectApiError(fetchCorridors(), 'contract')
+  })
+
+  it('accepts a valid body exactly at the limit', async () => {
+    const json = JSON.stringify(corridorsFixture)
+    // Trailing whitespace is valid JSON padding: exactly MAX_RESPONSE_BYTES.
+    const padded = json + ' '.repeat(MAX_RESPONSE_BYTES - json.length)
+    expect(encoder.encode(padded).byteLength).toBe(MAX_RESPONSE_BYTES)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(streamOf([encoder.encode(padded)]), { status: 200 }),
+      ),
+    )
+    const corridors = await fetchCorridors()
+    expect(corridors).toEqual(corridorsFixture)
+  })
+
+  it('still accepts a normal valid response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(corridorsFixture)))
+    await expect(fetchCorridors()).resolves.toEqual(corridorsFixture)
+  })
+
+  it('never retries automatically after an oversized response', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response('{}', {
+        status: 200,
+        headers: { 'Content-Length': String(MAX_RESPONSE_BYTES * 2) },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await expectApiError(requestQuote(QUOTE_BODY), 'contract')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -250,5 +314,74 @@ describe('VITE_API_URL hardening', () => {
     vi.stubGlobal('fetch', fetchMock)
     await expectApiError(fetchCorridors(), 'config')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('cancellation never blocks the error', () => {
+  const encoder = new TextEncoder()
+
+  function oversizedStreamWithHangingCancel(): ReadableStream<Uint8Array> {
+    const chunk = encoder.encode('x'.repeat(600 * 1024))
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(chunk)
+        controller.enqueue(chunk)
+        // never close
+      },
+      cancel() {
+        // A cancel() that NEVER settles must not delay the public error.
+        return new Promise<never>(() => {})
+      },
+    })
+  }
+
+  it('returns contract immediately for an oversized body even if cancel() never resolves', async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(oversizedStreamWithHangingCancel(), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await expectApiError(fetchCorridors(), 'contract')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns timeout at REQUEST_TIMEOUT_MS for a stalled body even if cancel() never resolves', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn(async () => {
+      const stalled = new ReadableStream<Uint8Array>({
+        start() {
+          // never enqueue, never close
+        },
+        cancel() {
+          return new Promise<never>(() => {})
+        },
+      })
+      return new Response(stalled, { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const pending = requestQuote(QUOTE_BODY)
+    const assertion = expectApiError(pending, 'timeout')
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS)
+    await assertion
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns contract immediately when Content-Length exceeds the limit and cancel() hangs', async () => {
+    const fetchMock = vi.fn(async () => {
+      const body = new ReadableStream<Uint8Array>({
+        start() {},
+        cancel() {
+          return new Promise<never>(() => {})
+        },
+      })
+      const response = new Response(body, { status: 200 })
+      // Response normalizes headers; force the oversized declaration.
+      Object.defineProperty(response, 'headers', {
+        value: new Headers({ 'Content-Length': String(MAX_RESPONSE_BYTES + 1) }),
+      })
+      return response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await expectApiError(fetchCorridors(), 'contract')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

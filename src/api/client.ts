@@ -26,6 +26,13 @@ import {
 /** Documented request timeout: 15 seconds end to end per request. */
 export const REQUEST_TIMEOUT_MS = 15_000
 
+/** Hard cap on any JSON response body: 1 MiB. Enforced BEFORE buffering —
+ * via Content-Length when declared, and incrementally while streaming
+ * chunked or length-less bodies — so an oversized response is cancelled,
+ * never stored whole. Exceeding it maps to the sanitized contract error
+ * (no sizes or bodies are ever surfaced). */
+export const MAX_RESPONSE_BYTES = 1_048_576
+
 const DEFAULT_RETRY_AFTER_SECONDS = 30
 const MAX_RETRY_AFTER_SECONDS = 600
 
@@ -58,6 +65,87 @@ function isAbort(error: unknown, controller: AbortController): boolean {
     controller.signal.aborted ||
     (error instanceof DOMException && error.name === 'AbortError')
   )
+}
+
+/** Read a JSON body with a hard 1 MiB cap, incrementally.
+ *
+ * `response.text()` would buffer an unbounded body first, so the stream is
+ * read chunk by chunk instead: the read is cancelled the moment the running
+ * total exceeds MAX_RESPONSE_BYTES. Each chunk read races against the
+ * request's abort signal so the 15 s timeout keeps covering a stalled body
+ * even when the underlying stream is not tied to the signal. */
+async function readBoundedJson(
+  response: Response,
+  controller: AbortController,
+): Promise<unknown> {
+  const declaredLength = response.headers.get('Content-Length')
+  if (declaredLength !== null) {
+    const declared = Number.parseInt(declaredLength, 10)
+    if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
+      // Fire-and-forget: cancellation is best-effort and must NEVER delay
+      // the sanitized error (a stream's cancel() may pend forever). The
+      // catch handler prevents late unhandled rejections.
+      void response.body?.cancel().catch(() => {})
+      throw new ApiError('contract')
+    }
+  }
+
+  let text: string
+  if (!response.body) {
+    // No readable stream (e.g. an empty body): nothing to read incrementally.
+    text = await response.text()
+    if (text.length > MAX_RESPONSE_BYTES) {
+      throw new ApiError('contract')
+    }
+  } else {
+    const abortRejection = new Promise<never>((_resolve, reject) => {
+      const rejectAbort = () =>
+        reject(new DOMException('aborted', 'AbortError'))
+      if (controller.signal.aborted) rejectAbort()
+      controller.signal.addEventListener('abort', rejectAbort, { once: true })
+    })
+    // Mark handled so a late abort never surfaces as an unhandled rejection.
+    abortRejection.catch(() => {})
+
+    const reader = response.body.getReader()
+    const chunks: Uint8Array[] = []
+    let received = 0
+    for (;;) {
+      let result: ReadableStreamReadResult<Uint8Array>
+      try {
+        result = await Promise.race([reader.read(), abortRejection])
+      } catch (error) {
+        // Best-effort cancellation, never awaited: a pending cancel() must
+        // not delay the timeout/network error past REQUEST_TIMEOUT_MS.
+        void reader.cancel().catch(() => {})
+        if (isAbort(error, controller)) {
+          throw new ApiError('timeout')
+        }
+        throw new ApiError('network')
+      }
+      if (result.done) break
+      received += result.value.byteLength
+      if (received > MAX_RESPONSE_BYTES) {
+        // Same: start cancelling, but return the sanitized error immediately.
+        void reader.cancel().catch(() => {})
+        throw new ApiError('contract')
+      }
+      chunks.push(result.value)
+    }
+    const merged = new Uint8Array(received)
+    let offset = 0
+    for (const chunk of chunks) {
+      merged.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    text = new TextDecoder().decode(merged)
+  }
+
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    throw new ApiError('contract')
+  }
 }
 
 async function request<Schema extends z.ZodType>(
@@ -104,17 +192,9 @@ async function request<Schema extends z.ZodType>(
       throw errorForStatus(response.status, response.headers.get('Retry-After'))
     }
 
-    let payload: unknown
-    try {
-      payload = await response.json()
-    } catch (error) {
-      // An abort while the body is being read is a timeout, not a contract
-      // violation; a genuine JSON failure without an abort stays 'contract'.
-      if (isAbort(error, controller)) {
-        throw new ApiError('timeout')
-      }
-      throw new ApiError('contract')
-    }
+    // Bounded, incremental body read: an abort mid-body is a timeout, an
+    // oversized or non-JSON body is a sanitized contract error.
+    const payload: unknown = await readBoundedJson(response, controller)
 
     const parsed = schema.safeParse(payload)
     if (!parsed.success) {

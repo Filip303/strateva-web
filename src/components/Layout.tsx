@@ -1,4 +1,6 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { applyMeta } from '../lib/meta'
 
 export const SIMULATION_NOTICE =
   'Simulation only. Strateva does not execute, custody or transmit funds.'
@@ -19,6 +21,26 @@ const LEGAL_ITEMS: ReadonlyArray<readonly [path: string, label: string]> = [
 ]
 
 export default function Layout() {
+  const location = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+  const isFirstRender = useRef(true)
+
+  // Per-page metadata (title, description, canonical, OG/Twitter, robots)
+  // updates on every SPA navigation.
+  useEffect(() => {
+    applyMeta(location.pathname)
+  }, [location.pathname])
+
+  // Accessible SPA navigation: move focus to the main landmark on route
+  // changes — but never steal focus on the initial page load.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    mainRef.current?.focus()
+  }, [location.pathname])
+
   return (
     <div className="app">
       <a className="skip-link" href="#main-content">
@@ -43,7 +65,7 @@ export default function Layout() {
           </ul>
         </nav>
       </header>
-      <main id="main-content" tabIndex={-1}>
+      <main id="main-content" tabIndex={-1} ref={mainRef}>
         <Outlet />
       </main>
       <footer className="site-footer">

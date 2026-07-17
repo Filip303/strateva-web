@@ -15,14 +15,27 @@ export default defineConfig({
     trace: 'off',
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
+  // Chromium at the five supported widths. All specs run at every width;
+  // Firefox coverage is deferred to the staging rehearsal.
   projects: [
     {
       name: 'chromium-desktop',
       use: { ...devices['Desktop Chrome'] },
     },
     {
-      // Mobile-width smoke: same flows at the smallest supported width.
-      name: 'chromium-mobile-width',
+      name: 'chromium-1024',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1024, height: 768 } },
+    },
+    {
+      name: 'chromium-768',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 768, height: 1024 } },
+    },
+    {
+      name: 'chromium-375',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 667 } },
+    },
+    {
+      name: 'chromium-320',
       use: { ...devices['Desktop Chrome'], viewport: { width: 320, height: 640 } },
     },
   ],
