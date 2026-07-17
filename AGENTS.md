@@ -1,53 +1,60 @@
-# AGENTS.md — Reglas para contribuir a Strateva Web
+# AGENTS.md — Rules for contributing to Strateva Web
 
-Este documento define cómo deben trabajar los agentes automáticos y las
-personas que contribuyen a este repositorio (`Filip303/strateva-web`). Es
-vinculante: cualquier cambio que las incumpla debe rechazarse.
+This document defines how automated agents and people must work in this
+repository (`Filip303/strateva-web`). It is binding: any change that violates
+these rules must be rejected.
 
-> Strateva es **solo una simulación**. Esta web no ejecuta, custodia, convierte
-> ni transmite fondos. Nada de lo que se construya aquí puede sugerir lo
-> contrario.
+> Strateva is **a simulation only**. This website does not execute, custody,
+> convert or transmit funds. Nothing built here may suggest otherwise.
 
-## Frontera con el backend
+## Boundary with the backend
 
-1. El frontend **solo** consume el **contrato HTTP público** del backend
-   (`Filip303/strateva-payment-router`) a través de su API REST.
-2. El frontend **nunca** importa código, tipos, configuración ni ningún
-   artefacto del repositorio privado (`strateva-platform-private`) ni de
-   ningún otro repositorio backend.
-3. Este repositorio **no contiene secretos**: ni claves, ni tokens, ni
-   credenciales, ni endpoints privados. Solo se referencian URLs públicas.
-4. Las variables de entorno con prefijo `VITE_*` se consideran **públicas**
-   por definición (se incrustan en el bundle del navegador). Nunca se debe
-   poner en una `VITE_*` nada que deba permanecer secreto.
+1. The frontend **only** consumes the **public HTTP contract** of the backend
+   (`Filip303/strateva-payment-router`) through its REST API.
+2. The frontend **never** imports code, types, configuration or any artifact
+   from the private repository (`strateva-platform-private`) or from any other
+   backend repository.
+3. This repository **contains no secrets**: no keys, no tokens, no
+   credentials, no private endpoints. Only public URLs are referenced.
+4. Environment variables prefixed `VITE_*` are **public by definition** (they
+   are embedded in the browser bundle). Nothing that must remain secret may
+   ever be placed in a `VITE_*` variable.
 
-## Prohibido en v1
+## Language
 
-- **Firebase**, **Supabase** o cualquier backend-as-a-service.
-- **Google login** o cualquier proveedor de autenticación / login.
-- **Wallets**, conexión a cadenas, firmas on-chain.
-- **Pagos**, cobros o cualquier flujo de dinero real.
-- **Analytics**, telemetría o tracking de usuarios.
+- All **visible copy is English-only** in v1: interface text, navigation,
+  URL paths, error messages, page metadata and legal-page labels.
+- **No language selector and no additional locale** ship in v1. No localized
+  routes, no hreflang. Future localization is out of scope.
+- Technical API identifiers, enum values, endpoint paths, JSON fields,
+  environment variables and code symbols are never translated or renamed.
 
-## Lenguaje de interfaz (CTA)
+## Prohibited in v1
 
-- **Prohibidos** los CTA que impliquen mover dinero: «Enviar», «Pagar»,
-  «Transferir» (y equivalentes).
-- **Permitidos**: «Comparar rutas» o «Simular ruta».
-- El resto del copy debe dejar claro en todo momento que los resultados son
-  simulados.
+- **Firebase**, **Supabase** or any backend-as-a-service.
+- **Google login** or any authentication / login provider.
+- **Wallets**, chain connections, on-chain signing.
+- **Payments**, charges or any real money flow.
+- **Analytics**, telemetry or user tracking.
 
-## Datos y almacenamiento
+## Interface language (CTAs)
 
-- **No** guardar importes introducidos por la persona usuaria ni respuestas de
-  la API en `localStorage` (ni en `sessionStorage`, cookies u otro almacén
-  persistente). La simulación es efímera.
+- **Prohibited**: CTAs that imply moving money — "Send money", "Pay",
+  "Transfer now" — and any wording suggesting that Strateva moves funds.
+- **Allowed**: "Compare routes" or "Simulate route".
+- All other copy must make clear at all times that results are simulated.
 
-## Proceso de cambios
+## Data and storage
 
-- Toda PR se abre como **borrador (draft)**, **sin auto-merge** y **sin
-  despliegue** asociado.
-- Los cambios deben ser **pequeños y auditables**: un propósito por PR,
-  diffs revisables, sin refactors masivos mezclados con funcionalidad.
-- No se modifica routing, comisiones, FX, tiempos, importes ni ningún dato del
-  backend desde este repositorio: la web solo presenta lo que la API devuelve.
+- Do **not** store user-entered amounts or API responses in `localStorage`
+  (nor in `sessionStorage`, cookies or any other persistent store). The
+  simulation is ephemeral.
+
+## Change process
+
+- Every PR is opened as a **draft**, with **no auto-merge** and **no deploy**
+  attached.
+- Changes must be **small and auditable**: one purpose per PR, reviewable
+  diffs, no large refactors mixed with functionality.
+- Routing, fees, FX, times, amounts and any backend data are never modified
+  from this repository: the website only presents what the API returns.

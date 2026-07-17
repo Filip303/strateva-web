@@ -1,295 +1,296 @@
-# Mapeo API ↔ UI — Strateva Web (v1)
+# API ↔ UI mapping — Strateva Web (v1)
 
-> Solo simulación. Este documento mapea el **contrato HTTP público real** del
-> backend a los componentes visuales de la web. No inventa campos ni corredores.
+> Simulation only. This document maps the backend's **real public HTTP
+> contract** to the website's visual components. It invents no fields and no
+> corridors.
 
-## Fuente del contrato
+## Source of the contract
 
-- Repositorio backend público: `Filip303/strateva-payment-router`.
-- Commit de referencia (contrato desplegado):
+- Public backend repository: `Filip303/strateva-payment-router`.
+- Reference commit (deployed contract):
   **`a697ca08348d0f1ec19bcb715c7a54ce6dff625f`**.
-- Definición autoritativa de los esquemas (leída de este commit):
-  - `backend/src/strateva/api/routes.py` (endpoints y códigos de estado),
-  - `backend/src/strateva/api/schemas.py` (esquemas HTTP),
-  - `backend/src/strateva/api/public.py` (proyección pública de la ruta).
-- **La única fuente de verdad de los campos es el código del esquema en ese
-  commit.** Ver la nota de *gap* sobre `examples/quote-response.json` al final.
+- Authoritative schema definitions (read from that commit):
+  - `backend/src/strateva/api/routes.py` (endpoints and status codes),
+  - `backend/src/strateva/api/schemas.py` (HTTP schemas),
+  - `backend/src/strateva/api/public.py` (public route projection).
+- **The only source of truth for the fields is the schema code at that
+  commit.** See the *gap* note about `examples/quote-response.json` at the
+  end.
 
-Regla general: la web **solo** renderiza campos presentes en estos esquemas. Si
-un dato no está, se marca como *gap* (pendiente en la API), nunca se inventa.
+General rule: the website **only** renders fields present in these schemas. If
+a piece of data is missing, it is flagged as a *gap* (pending in the API),
+never invented.
 
-### Campos obligatorios vs. visualización opcional
+### Required fields vs. optional display
 
-En este documento se distingue explícitamente entre dos cosas que no deben
-confundirse:
+This document explicitly distinguishes two things that must not be confused:
 
-- **«Obligatorio en la API»**: el esquema del backend siempre entrega el campo.
-- **«La UI puede no mostrarlo»**: decisión de presentación del componente; el
-  campo sigue llegando en la respuesta.
+- **"Required in the API"**: the backend schema always delivers the field.
+- **"The UI may choose not to show it"**: a presentation decision of the
+  component; the field still arrives in the response.
 
-Cuando una anotación diga «UI: opcional mostrarlo» significa lo segundo, nunca
-que el campo pueda faltar en el contrato.
-
----
-
-## Endpoints consumidos por la v1
-
-| Método | Ruta                          | Uso en la web                                  |
-|--------|-------------------------------|------------------------------------------------|
-| GET    | `/api/v1/corridors`           | Poblar el selector de corredores.              |
-| GET    | `/api/v1/corridors/{id}`      | Detalle de corredor (familias, pares, redes).  |
-| POST   | `/api/v1/routes/quote`        | Simular y comparar rutas.                       |
-| GET    | `/health`                     | (Opcional para la UI) estado del servicio.      |
-
-`/ready`, `/api/v1/providers` y `/api/v1/providers/health` existen en el backend
-pero **no** son necesarios para la UI de v1 (uso interno/diagnóstico).
+Wherever a note says "UI: optional to display" it means the latter, never that
+the field can be missing from the contract.
 
 ---
 
-## 1) `GET /api/v1/corridors` → selector de corredores
+## Endpoints consumed by v1
 
-Respuesta: lista de `CorridorInfo`.
+| Method | Path                          | Use in the website                             |
+|--------|-------------------------------|-------------------------------------------------|
+| GET    | `/api/v1/corridors`           | Populate the corridor selector.                 |
+| GET    | `/api/v1/corridors/{id}`      | Corridor detail (families, pairs, networks).    |
+| POST   | `/api/v1/routes/quote`        | Simulate and compare routes.                    |
+| GET    | `/health`                     | (Optional for the UI) service status.           |
 
-| Campo API                | Tipo   | Componente UI                                  |
-|--------------------------|--------|------------------------------------------------|
-| `corridor_id`            | string | valor interno de la opción del selector.        |
-| `origin_country`         | string | código ISO país origen (para etiqueta/bandera). |
-| `destination_country`    | string | código ISO país destino.                        |
-| `source_currency`        | string | moneda del campo importe.                        |
-| `destination_currency`   | string | moneda del resultado recibido.                   |
+`/ready`, `/api/v1/providers` and `/api/v1/providers/health` exist in the
+backend but are **not** needed for the v1 UI (internal/diagnostic use).
 
-- El selector se construye **enteramente** con esta respuesta. No se codifican
-  EUR→MXN ni GBP→EUR en el frontend; se muestran porque la API los devuelve.
-- **Gap:** la API no devuelve un nombre legible del corredor ni de la moneda
-  (solo códigos ISO). La etiqueta visible («EUR → MXN») se compone en el cliente
-  a partir de los códigos; cualquier nombre «bonito» es presentación de UI, no
-  un dato de la API.
+---
 
-## 2) `GET /api/v1/corridors/{id}` → detalle de corredor
+## 1) `GET /api/v1/corridors` → corridor selector
 
-Respuesta: `CorridorDetail`.
+Response: list of `CorridorInfo`.
 
-| Campo API             | Componente UI                                            |
-|-----------------------|---------------------------------------------------------|
-| `corridor_id`         | título/identificador.                                    |
-| `origin_country` / `destination_country` | encabezado del corredor.             |
-| `source_currency` / `destination_currency` | encabezado del corredor.           |
-| `simulation_only`     | refuerza el disclaimer (siempre `true`).                 |
-| `market_pairs`        | lista de pares de mercado (p. ej. `EURMXN`).             |
-| `route_families[]`    | tarjetas de «familias de ruta» disponibles.              |
+| API field                | Type   | UI component                                   |
+|--------------------------|--------|-------------------------------------------------|
+| `corridor_id`            | string | internal value of the selector option.          |
+| `origin_country`         | string | ISO origin-country code (label/flag).           |
+| `destination_country`    | string | ISO destination-country code.                   |
+| `source_currency`        | string | currency of the amount field.                   |
+| `destination_currency`   | string | currency of the received result.                |
 
-Cada `route_families[]` = `RouteFamilyInfo`:
+- The selector is built **entirely** from this response. EUR→MXN and GBP→EUR
+  are not hardcoded in the frontend; they appear because the API returns them.
+- **Gap:** the API returns no human-readable corridor or currency names (ISO
+  codes only). The visible label ("EUR → MXN") is composed client-side from
+  the codes; any "pretty" name is UI presentation, not backend data.
 
-| Campo                     | Componente UI                                        |
+## 2) `GET /api/v1/corridors/{id}` → corridor detail
+
+Response: `CorridorDetail`.
+
+| API field             | UI component                                             |
+|-----------------------|----------------------------------------------------------|
+| `corridor_id`         | title/identifier.                                        |
+| `origin_country` / `destination_country` | corridor header.                       |
+| `source_currency` / `destination_currency` | corridor header.                     |
+| `simulation_only`     | reinforces the disclaimer (always `true`).               |
+| `market_pairs`        | list of market pairs (e.g. `EURMXN`).                    |
+| `route_families[]`    | "route family" cards.                                    |
+
+Each `route_families[]` = `RouteFamilyInfo`:
+
+| Field                     | UI component                                         |
 |---------------------------|------------------------------------------------------|
-| `family_id`               | id de la tarjeta de familia.                          |
-| `label`                   | título legible de la familia.                         |
-| `enabled`                 | badge disponible / no disponible.                     |
-| `simulated`               | badge «simulado» (siempre true).                      |
-| `required_provider`       | nota «requiere proveedor X» (o ninguno).              |
-| `providers[]`             | chips de proveedores.                                 |
-| `networks[]`              | chips de redes (p. ej. `sepa`, `base`, `spei`).       |
-| `operations[]`            | secuencia de operaciones (`tipo:activo->activo`).     |
-| `chain_confirmations[]`   | por tramo on-chain: `edge_id` + `confirmation_target`.|
-| `offramp_acceptances[]`   | por off-ramp: `minimum_confirmation_target`, `simulated`. |
+| `family_id`               | family card id.                                       |
+| `label`                   | readable family title.                                |
+| `enabled`                 | available / unavailable badge.                        |
+| `simulated`               | "simulated" badge (always true).                      |
+| `required_provider`       | "requires provider X" note (or none).                 |
+| `providers[]`             | provider chips.                                       |
+| `networks[]`              | network chips (e.g. `sepa`, `base`, `spei`).          |
+| `operations[]`            | operation sequence (`type:asset->asset`).             |
+| `chain_confirmations[]`   | per on-chain leg: `edge_id` + `confirmation_target`.  |
+| `offramp_acceptances[]`   | per off-ramp: `minimum_confirmation_target`, `simulated`. |
 
-- `confirmation_target` ∈ {`included`, `safe`, `finalized`}. Es un **objetivo de
-  confirmación en cadena**, **no** disponibilidad de fiat (ver terminología).
+- `confirmation_target` ∈ {`included`, `safe`, `finalized`}. It is a
+  **chain-confirmation target**, **not** fiat availability (see terminology).
 
-## 3) `POST /api/v1/routes/quote` → simulador
+## 3) `POST /api/v1/routes/quote` → simulator
 
-### 3.1 Petición — `QuoteRequestBody`
+### 3.1 Request — `QuoteRequestBody`
 
-| Campo API                            | Control de formulario                        | Reglas |
+| API field                            | Form control                                 | Rules |
 |--------------------------------------|----------------------------------------------|--------|
-| `origin_country`                     | derivado del corredor elegido                | 2 letras |
-| `destination_country`                | derivado del corredor elegido                | 2 letras |
-| `source_currency`                    | derivado del corredor elegido                | 3 letras |
-| `destination_currency`               | derivado del corredor elegido                | 3 letras |
-| `amount`                             | campo importe                                | > 0 |
-| `objective`                          | selector de objetivo                         | enum fijo: `cheapest`/`fastest`/`most_reliable`/`balanced` (def. `balanced`) |
-| `maximum_time_minutes`               | opción avanzada (opcional en la petición)    | > 0 |
-| `maximum_cost_percentage`            | opción avanzada (opcional en la petición)    | > 0, ≤ 100 |
-| `maximum_conservative_time_minutes`  | opción avanzada (opcional en la petición)    | > 0 |
-| `minimum_reliability`                | opción avanzada (opcional en la petición)    | 0.0–1.0 |
-| `excluded_providers[]`               | opción avanzada (opcional en la petición)    | lista |
-| `excluded_networks[]`                | opción avanzada (opcional en la petición)    | lista |
+| `origin_country`                     | derived from the selected corridor           | 2 letters |
+| `destination_country`                | derived from the selected corridor           | 2 letters |
+| `source_currency`                    | derived from the selected corridor           | 3 letters |
+| `destination_currency`               | derived from the selected corridor           | 3 letters |
+| `amount`                             | amount field                                 | > 0 |
+| `objective`                          | objective selector                           | fixed enum: `cheapest`/`fastest`/`most_reliable`/`balanced` (default `balanced`) |
+| `maximum_time_minutes`               | advanced option (optional in the request)    | > 0 |
+| `maximum_cost_percentage`            | advanced option (optional in the request)    | > 0, ≤ 100 |
+| `maximum_conservative_time_minutes`  | advanced option (optional in the request)    | > 0 |
+| `minimum_reliability`                | advanced option (optional in the request)    | 0.0–1.0 |
+| `excluded_providers[]`               | advanced option (optional in the request)    | list |
+| `excluded_networks[]`                | advanced option (optional in the request)    | list |
 
-- Los cuatro campos de país/moneda **no** son inputs libres: se derivan del
-  corredor seleccionado (que viene de la API).
-- `objective` es un **enum fijo del contrato público**: la API no ofrece un
-  endpoint de metadatos que enumere los objetivos, así que el frontend
-  implementa y valida exactamente esos cuatro valores. Solo los corredores se
-  descubren dinámicamente. (Ver *gaps*.)
+- The four country/currency fields are **not** free inputs: they derive from
+  the selected corridor (which comes from the API).
+- `objective` is a **fixed enum of the public contract**: the API offers no
+  metadata endpoint that enumerates the objectives, so the frontend implements
+  and validates exactly those four values. Only corridors are discovered
+  dynamically. (See *gaps*.)
 
-### 3.2 Respuesta — `QuoteResponse`
+### 3.2 Response — `QuoteResponse`
 
-Todos los campos son obligatorios en el contrato.
+Every field is required in the contract.
 
-| Campo API              | Componente UI                                             |
+| API field              | UI component                                             |
 |------------------------|----------------------------------------------------------|
-| `disclaimer`           | banner de simulación junto a los resultados.              |
-| `simulation_only`      | refuerzo del disclaimer (siempre `true`).                 |
-| `generated_at`         | marca de generación (UI: opcional mostrarla).             |
-| `quote_expires_at`     | «Validez de la recomendada hasta…» (ver nota de caducidad). |
-| `sent_amount`          | «Enviado: … {source_currency}».                           |
-| `source_currency`      | moneda enviada.                                           |
-| `destination_currency` | moneda recibida.                                          |
-| `objective`            | objetivo aplicado (eco del elegido).                      |
-| `recommended_route`    | tarjeta **RECOMENDADA** (ver 3.3).                        |
-| `alternative_routes[]` | tarjetas de alternativas (ver 3.3).                       |
-| `warnings[]`           | avisos a nivel de respuesta.                              |
-| `provider_failures[]`  | lista **siempre presente, posiblemente vacía** de fallos de proveedor; UI: opcional mostrarla. |
+| `disclaimer`           | simulation banner next to the results.                   |
+| `simulation_only`      | reinforces the disclaimer (always `true`).               |
+| `generated_at`         | generation timestamp (UI: optional to display).          |
+| `quote_expires_at`     | "Recommended route valid until…" (see expiry note).      |
+| `sent_amount`          | "Sent: … {source_currency}".                             |
+| `source_currency`      | currency sent.                                           |
+| `destination_currency` | currency received.                                       |
+| `objective`            | applied objective (echo of the chosen one).              |
+| `recommended_route`    | **RECOMMENDED** card (see 3.3).                          |
+| `alternative_routes[]` | alternative cards (see 3.3).                             |
+| `warnings[]`           | response-level warnings.                                 |
+| `provider_failures[]`  | **always-present, possibly empty** list of provider failures; UI: optional to display. |
 
-**Caducidad:** `quote_expires_at` es la **validez efectiva de la ruta
-recomendada** — el mínimo entre la caducidad propia de esa ruta (cotizaciones
-de proveedor y snapshot de mercado) y el TTL del servidor. **No** describe a las
-alternativas: **cada ruta**, alternativas incluidas, lleva su propio
-`expires_at` (ver 3.3), y la UI no debe sugerir que todas caducan a la vez.
+**Expiry:** `quote_expires_at` is the **effective validity of the recommended
+route** — the minimum of that route's own expiry (provider quotes and market
+snapshot) and the server TTL. It does **not** describe the alternatives:
+**every route**, alternatives included, carries its own `expires_at` (see
+3.3), and the UI must not suggest they all expire at once.
 
-### 3.3 Ruta — `PublicRouteResult` (recomendada y cada alternativa)
+### 3.3 Route — `PublicRouteResult` (recommended and each alternative)
 
-Todos los campos son **obligatorios en el contrato**; donde pone «UI: opcional
-mostrarlo» es una decisión de presentación, no una ausencia posible del campo.
+Every field is **required in the contract**; where it says "UI: optional to
+display" that is a presentation decision, not a possible absence of the field.
 
-| Campo API                         | Componente UI                                    |
+| API field                         | UI component                                     |
 |-----------------------------------|--------------------------------------------------|
-| `route_id`                        | id interno de la tarjeta.                         |
-| `simulation_only`                 | refuerzo del disclaimer.                          |
-| `steps[]`                         | desglose por tramo (ver 3.4).                     |
-| `total_cost`                      | «Coste total» — **denominado en `destination_currency`**. |
-| `total_cost_percentage`           | «Coste total (%)» — porcentaje.                   |
-| `total_time_seconds`              | tiempo total (= esperado).                        |
-| `expected_time_seconds`           | «Tiempo esperado».                                |
-| `conservative_time_seconds`       | «Tiempo conservador» (NO «p95»).                  |
-| `time_to_fiat_available_seconds`  | «Fiat disponible en ~» (tiempo hasta fiat útil).  |
-| `latency_breakdown[]`             | obligatorio en la API; tiempos por componente (UI: opcional mostrarlo). |
-| `latency_legs[]`                  | obligatorio en la API; latencia por tramo (ver 3.5) (UI: opcional mostrarlo). |
-| `operates_24_7`                   | badge «24/7: Sí/No».                              |
-| `effective_fx_rate`               | «FX efectivo (simulado)» — tasa efectiva extremo a extremo (ver «Monedas y unidades»). |
-| `estimated_received_amount`       | «Recibe (aprox.) … {destination_currency}».       |
-| `reliability_score`               | «Fiabilidad».                                     |
-| `objective_score`                 | obligatorio en la API; puntuación del objetivo (UI: opcional mostrarlo). |
-| `expires_at`                      | caducidad **propia de esta ruta** (también en cada alternativa); base de `quote_expires_at` para la recomendada. |
-| `explanation`                     | «Por qué se recomienda».                          |
-| `warnings[]`                      | avisos de la ruta (p. ej. datos on-chain simulados).|
+| `route_id`                        | internal card id.                                 |
+| `simulation_only`                 | reinforces the disclaimer.                        |
+| `steps[]`                         | leg breakdown (see 3.4).                          |
+| `total_cost`                      | "Total cost" — **denominated in `destination_currency`**. |
+| `total_cost_percentage`           | "Total cost (%)" — percentage.                    |
+| `total_time_seconds`              | total time (= expected).                          |
+| `expected_time_seconds`           | "Expected time".                                  |
+| `conservative_time_seconds`       | "Conservative time" (NOT "p95").                  |
+| `time_to_fiat_available_seconds`  | "Fiat available in ~" (time until usable fiat).   |
+| `latency_breakdown[]`             | required in the API; per-component times (UI: optional to display). |
+| `latency_legs[]`                  | required in the API; per-leg latency (see 3.5) (UI: optional to display). |
+| `operates_24_7`                   | "24/7: Yes/No" badge.                             |
+| `effective_fx_rate`               | "Effective FX rate (simulated)" — end-to-end effective rate (see "Currencies and units"). |
+| `estimated_received_amount`       | "Receives (approx.) … {destination_currency}".    |
+| `reliability_score`               | "Reliability".                                    |
+| `objective_score`                 | required in the API; objective score (UI: optional to display). |
+| `expires_at`                      | expiry **of this route** (also on every alternative); basis of `quote_expires_at` for the recommended one. |
+| `explanation`                     | "Why this route is recommended".                  |
+| `warnings[]`                      | route warnings (e.g. simulated on-chain data).    |
 
-### 3.4 Tramo — `RouteStep` (dentro de `steps[]`)
+### 3.4 Leg — `RouteStep` (inside `steps[]`)
 
-| Campo API                 | Componente UI                                   |
+| API field                 | UI component                                    |
 |---------------------------|-------------------------------------------------|
-| `position`                | orden del tramo.                                 |
-| `source_node`             | nodo origen (asset, network, country, account…). |
-| `destination_node`        | nodo destino.                                    |
-| `provider`                | proveedor del tramo.                             |
-| `operation_type`          | tipo de operación (sepa_transfer, fx_conversion, onramp, offramp, bridge, local_payout, swift_transfer…). |
-| `fixed_fee`               | comisión fija — **denominada en `source_node.asset`** (activo de entrada del tramo). |
-| `percentage_fee_amount`   | comisión porcentual (importe) — **denominada en `source_node.asset`**. |
-| `spread_cost`             | coste de spread FX — **denominado en `destination_node.asset`** (activo de salida del tramo). |
-| `estimated_time_seconds`  | tiempo del tramo.                                |
-| `reliability_score`       | fiabilidad del tramo.                            |
-| `amount_in` / `amount_out`| «entra / sale» por tramo — en `source_node.asset` / `destination_node.asset` respectivamente. |
+| `position`                | leg order.                                       |
+| `source_node`             | source node (asset, network, country, account…). |
+| `destination_node`        | destination node.                                |
+| `provider`                | leg provider.                                    |
+| `operation_type`          | operation type (sepa_transfer, fx_conversion, onramp, offramp, bridge, local_payout, swift_transfer…). |
+| `fixed_fee`               | fixed fee — **denominated in `source_node.asset`** (the leg's input asset). |
+| `percentage_fee_amount`   | percentage fee (amount) — **denominated in `source_node.asset`**. |
+| `spread_cost`             | FX spread cost — **denominated in `destination_node.asset`** (the leg's output asset). |
+| `estimated_time_seconds`  | leg time.                                        |
+| `reliability_score`       | leg reliability.                                 |
+| `amount_in` / `amount_out`| "in / out" per leg — in `source_node.asset` / `destination_node.asset` respectively. |
 
-### 3.5 Latencia por tramo — `PublicLatencyLeg` (dentro de `latency_legs[]`)
+### 3.5 Per-leg latency — `PublicLatencyLeg` (inside `latency_legs[]`)
 
-| Campo API              | Componente UI                                       |
+| API field              | UI component                                        |
 |------------------------|-----------------------------------------------------|
-| `position` / `edge_id` | identificación del tramo.                            |
-| `provider`             | proveedor.                                           |
-| `component`            | componente (FUNDING, ONRAMP, CHAIN_CONFIRMATION, BRIDGE, OFFRAMP, FIAT_PAYOUT, BANK_SETTLEMENT). |
-| `confirmation_target`  | included/safe/finalized (solo tramo on-chain). **No** es fiat disponible. |
-| `expected_seconds`     | tiempo esperado del tramo.                            |
-| `conservative_seconds` | tiempo conservador del tramo.                        |
-| `availability`         | `continuous` / `banking_hours`.                     |
-| `basis`                | `operational_duration` (hoy) / `calendar_elapsed` (reservado). |
-| `latency_source`       | **solo** `observed` o `declarative`.                 |
-| `provenance`           | **solo** `observed`, `declarative` o `fallback`.     |
-| `fallback_reason`      | código estable (cuando `provenance = fallback`: existía evidencia observada, fue rechazada y se conservaron los tiempos declarativos). |
-| `as_of` / `valid_until`| fechas de la evidencia observada (solo tramos `observed`). |
+| `position` / `edge_id` | leg identification.                                  |
+| `provider`             | provider.                                            |
+| `component`            | component (FUNDING, ONRAMP, CHAIN_CONFIRMATION, BRIDGE, OFFRAMP, FIAT_PAYOUT, BANK_SETTLEMENT). |
+| `confirmation_target`  | included/safe/finalized (on-chain leg only). **Not** fiat availability. |
+| `expected_seconds`     | leg expected time.                                   |
+| `conservative_seconds` | leg conservative time.                               |
+| `availability`         | `continuous` / `banking_hours`.                      |
+| `basis`                | `operational_duration` (today) / `calendar_elapsed` (reserved). |
+| `latency_source`       | **only** `observed` or `declarative`.                |
+| `provenance`           | **only** `observed`, `declarative` or `fallback`.    |
+| `fallback_reason`      | stable code (when `provenance = fallback`: observed evidence existed, was rejected, and the declarative times were kept). |
+| `as_of` / `valid_until`| dates of the observed evidence (only on `observed` legs). |
 
-- El DTO público **no** expone ningún campo `source`: la distinción interna
-  entre latencia sintética y contractual **no cruza la frontera pública** y la
-  UI no debe inventarla ni mostrar «sintético» como valor por tramo.
-
----
-
-## Monedas y unidades (obligatorio en la UI)
-
-Ninguna cifra financiera se muestra sin su moneda o activo:
-
-- `total_cost` → en **`destination_currency`** de la respuesta.
-- `estimated_received_amount` → en `destination_currency`.
-- `sent_amount` → en `source_currency`.
-- Por tramo: `fixed_fee` y `percentage_fee_amount` → en **`source_node.asset`**
-  (activo de entrada del tramo); `spread_cost` → en
-  **`destination_node.asset`** (activo de salida); `amount_in` / `amount_out`
-  → en el activo de entrada / salida respectivamente.
-- `total_cost_percentage` → porcentaje (se mantiene como %).
-- `effective_fx_rate` → se presenta como **tasa efectiva simulada de extremo a
-  extremo**: `estimated_received_amount / sent_amount`, es decir, unidades de
-  destino por unidad de origen **después de todos los costes**. **No** es un
-  tipo real de mercado ni un tipo medio; el copy no debe presentarlo como tal.
-
-El formato visual (separadores, símbolo, redondeo de visualización) es
-responsabilidad de la UI y no debe alterar la cifra recibida.
+- The public DTO exposes **no** `source` field: the internal distinction
+  between synthetic and contractual latency **does not cross the public
+  boundary**, and the UI must not invent it or show "synthetic" as a per-leg
+  value.
 
 ---
 
-## Distinción de tiempos (obligatoria en la UI)
+## Currencies and units (mandatory in the UI)
 
-El backend expone **tres** magnitudes de tiempo distintas; la web no debe
-confundirlas ni sustituir una por otra:
+No financial figure is shown without its currency or asset:
 
-1. **Tiempo esperado** (`expected_time_seconds`) — suma de tiempos esperados por
-   tramo; es el tiempo «típico».
-2. **Tiempo conservador** (`conservative_time_seconds`) — suma de cotas
-   conservadoras por tramo. Es un límite prudente, **no** un p95 (el p95 de una
-   suma no es la suma de p95). Etiqueta: «conservador».
-3. **Fiat disponible** (`time_to_fiat_available_seconds`) — tiempo (conservador)
-   hasta que el receptor tiene **fiat gastable** en su banco de destino. La
-   confirmación en cadena **no** es fiat disponible: una ruta con blockchain
-   rápida pero off-ramp lento reporta aquí el tiempo del off-ramp/payout.
+- `total_cost` → in the response's **`destination_currency`**.
+- `estimated_received_amount` → in `destination_currency`.
+- `sent_amount` → in `source_currency`.
+- Per leg: `fixed_fee` and `percentage_fee_amount` → in
+  **`source_node.asset`** (the leg's input asset); `spread_cost` → in
+  **`destination_node.asset`** (the output asset); `amount_in` / `amount_out`
+  → in the input / output asset respectively.
+- `total_cost_percentage` → percentage (stays a %).
+- `effective_fx_rate` → presented as the **simulated end-to-end effective
+  rate**: `estimated_received_amount / sent_amount`, i.e. destination units
+  per origin unit **after all costs**. It is **not** a real market rate and
+  not a mid rate; copy must not present it as such.
 
-`operates_24_7` indica si **todos** los tramos usan raíles continuos; es un flag
-descriptivo, no un cálculo de calendario/festivos.
-
----
-
-## Validación del contrato en el frontend (futura)
-
-El JSON de ejemplo del backend **no modifica el contrato**: la fuente de verdad
-es el código del esquema al commit de referencia. Cuando exista código, el
-frontend validará las respuestas contra el contrato: si en una respuesta real
-faltara un campo **obligatorio** (p. ej. `latency_legs` u `objective_score`),
-la validación debe **fallar de forma segura** y mostrar el estado de error
-sanitizado — nunca aceptar la respuesta como válida ni renderizar datos a
-medias.
+Visual formatting (separators, symbol, display rounding) is the UI's
+responsibility and must not alter the received figure.
 
 ---
 
-## Gaps (lo que la API todavía NO proporciona)
+## Time distinctions (mandatory in the UI)
 
-Marcado explícitamente como *gap*, nunca presentado como dato existente:
+The backend exposes **three** distinct time magnitudes; the website must not
+confuse them or substitute one for another:
 
-- **Sin endpoint de metadatos de objetivos**: la API no expone ningún endpoint
-  para descubrir los objetivos de optimización. El frontend implementa y valida
-  los cuatro valores exactos del enum público (`cheapest`, `fastest`,
-  `most_reliable`, `balanced`); solo los corredores se descargan dinámicamente.
-- **Nombres legibles**: la API da códigos ISO de país/moneda e ids de corredor,
-  pero **no** nombres localizados de corredor ni de moneda. La UI los compone;
-  no son datos del backend.
-- **Ejemplo desactualizado (no altera el contrato)**:
-  `examples/quote-response.json` (en el repo backend, a este commit) no incluye
+1. **Expected time** (`expected_time_seconds`) — sum of per-leg expected
+   times; the "typical" time.
+2. **Conservative time** (`conservative_time_seconds`) — sum of per-leg
+   conservative bounds. A prudent bound, **not** a p95 (the p95 of a sum is
+   not the sum of p95s). Label: "conservative".
+3. **Fiat available** (`time_to_fiat_available_seconds`) — the (conservative)
+   time until the receiver holds **spendable fiat** in their destination bank.
+   Chain confirmation is **not** fiat availability: a route with a fast
+   blockchain but a slow off-ramp reports the off-ramp/payout time here.
+
+`operates_24_7` says whether **all** legs run on continuous rails; it is a
+descriptive flag, not a calendar/holiday computation.
+
+---
+
+## Contract validation in the frontend (future)
+
+The backend's example JSON **does not modify the contract**: the source of
+truth is the schema code at the reference commit. Once code exists, the
+frontend will validate responses against the contract: if a real response were
+missing a **required** field (e.g. `latency_legs` or `objective_score`),
+validation must **fail safe** and show the sanitized error state — never
+accept the response as valid or render partial data.
+
+---
+
+## Gaps (what the API does NOT provide yet)
+
+Explicitly flagged as *gaps*, never presented as existing data:
+
+- **No objectives-metadata endpoint**: the API exposes no endpoint to discover
+  the optimization objectives. The frontend implements and validates the four
+  exact values of the public enum (`cheapest`, `fastest`, `most_reliable`,
+  `balanced`); only corridors are fetched dynamically.
+- **Readable names**: the API returns ISO country/currency codes and corridor
+  ids, but **no** human-readable corridor or currency names. The UI composes
+  them; they are not backend data.
+- **Outdated example (does not alter the contract)**:
+  `examples/quote-response.json` (in the backend repo, at this commit) lacks
   `expected_time_seconds`, `conservative_time_seconds`,
-  `time_to_fiat_available_seconds`, `latency_breakdown`, `latency_legs` ni
-  `operates_24_7`, pese a que el esquema `PublicRouteResult` **sí** los declara
-  como obligatorios en el mismo commit. El código del esquema manda; el JSON de
-  ejemplo está atrasado y no debilita el contrato. Si una respuesta real
-  incumpliera el esquema, aplica la validación fail-safe descrita arriba.
-- **Sin variancia real**: hoy `conservative_seconds` suele igualar
-  `expected_seconds` (no hay distribuciones por tramo). No hay ningún campo de
-  percentil; no debe mostrarse «p95».
-- **Disponibilidad como calendario**: `availability` (`continuous`/
-  `banking_hours`) es descriptivo; los tiempos son duraciones operativas, **no**
-  ETAs de calendario (no modelan festivos, husos ni cortes). No presentar los
-  tiempos como hora de entrega natural.
+  `time_to_fiat_available_seconds`, `latency_breakdown`, `latency_legs` and
+  `operates_24_7`, even though the `PublicRouteResult` schema **does** declare
+  them as required at the same commit. The schema code rules; the example JSON
+  is stale and does not weaken the contract. If a real response violated the
+  schema, the fail-safe validation described above applies.
+- **No real variance**: today `conservative_seconds` usually equals
+  `expected_seconds` (no per-leg distributions). There is no percentile field;
+  "p95" must not be displayed.
+- **Availability is not a calendar**: `availability`
+  (`continuous`/`banking_hours`) is descriptive; the times are operational
+  durations, **not** calendar ETAs (no holidays, time zones or cut-offs). Do
+  not present the times as a natural delivery time.

@@ -1,145 +1,153 @@
-# Terminología y copy — Strateva Web (v1)
+# Terminology and copy — Strateva Web (v1)
 
-> Solo simulación. El lenguaje de la web debe reflejar en todo momento que
-> Strateva **no ejecuta, custodia, convierte ni transmite fondos**. El copy
-> inicial es en español y está preparado para traducción (i18n).
+> Simulation only. The website's language must reflect at all times that
+> Strateva **does not execute, custody, convert or transmit funds**. All v1
+> copy is **English-only**.
 
-Este documento fija qué se puede decir y qué no, y define los términos clave con
-precisión para que el copy sea honesto y consistente con el contrato del backend.
+This document fixes what may and may not be said, and defines the key terms
+precisely so the copy stays honest and consistent with the backend contract.
 
-## Principios de copy
+## Copy principles
 
-1. **Simulación explícita.** Todo texto que muestre cifras va acompañado (o está
-   dentro de un contexto) que deja claro que son simuladas.
-2. **Sin lenguaje de ejecución.** Nada sugiere que se mueva dinero.
-3. **Sin cifras inventadas.** No se afirman métricas, plazos ni ahorros que la
-   API no devuelva. Toda cifra financiera se muestra con su moneda o activo.
-4. **Preparado para i18n.** El copy se redacta como cadenas traducibles; se
-   evita concatenar frases o incrustar datos dentro del texto de forma que
-   impida traducir.
+1. **Simulation explicit.** Every text that shows figures is accompanied by (or
+   sits within a context making clear) that they are simulated.
+2. **No execution language.** Nothing suggests money is moved.
+3. **No invented figures.** No metrics, delivery promises or savings the API
+   does not return. Every financial figure is shown with its currency or
+   asset.
+4. **English-only.** All visible copy — interface text, navigation, errors,
+   metadata, legal labels — is written in English. No additional locale ships
+   in v1; future localization is out of scope.
 
-## Texto permitido
+## Allowed copy
 
-- CTA: **«Comparar rutas»**, **«Simular ruta»**.
-- Verbos: comparar, simular, estimar, mostrar, ordenar, explicar.
-- «Resultado simulado», «datos sintéticos», «ruta recomendada», «alternativas».
-- Etiquetas de objetivo: **«Priorizar coste»**, **«Priorizar velocidad»**,
-  **«Priorizar fiabilidad»**, **«Equilibrado»**.
+- CTAs: **"Compare routes"**, **"Simulate route"**.
+- Verbs: compare, simulate, estimate, show, rank, explain.
+- "Simulated result", "synthetic data", "recommended route", "alternatives".
+- Objective labels: **"Prioritize cost"**, **"Prioritize speed"**,
+  **"Prioritize reliability"**, **"Balanced"**.
+- Core UI terms: Corridor, Amount, Objective, Advanced options, Results,
+  Recommended, Alternatives, Total cost, Effective FX rate, Expected time,
+  Conservative time, Fiat available in, Reliability, Expires, Retry.
 
-## Texto prohibido
+## Prohibited copy
 
-- CTA o verbos de movimiento de dinero: **«Enviar»**, **«Pagar»**,
-  **«Transferir»**, «mandar dinero», «cobrar», «depositar».
-- Afirmar que algo es real, ejecutado, liquidado o custodiado.
-- Afirmar que un objetivo **garantiza** un óptimo absoluto: `cheapest` no
-  garantiza «el coste mínimo» ni `most_reliable` «la fiabilidad máxima» — son
-  puntuaciones combinadas que **priorizan** esa dimensión (por eso las etiquetas
-  son «Priorizar coste», «Priorizar velocidad», «Priorizar fiabilidad» y
-  «Equilibrado»; semántica exacta en `PRODUCT_CONTRACT.md` §4).
-- Métricas o promesas no respaldadas por la API: «el más rápido del mercado»,
-  «ahorra un X %», «garantizado», cifras de volumen o de usuarios.
-- **«p95»**, salvo que se refiera a una **estadística observada real** (hoy no
-  existe; ver abajo). El tiempo prudente se llama **«conservador»**.
+- CTAs or verbs that move money: **"Send money"**, **"Pay"**, **"Transfer
+  now"**, "wire", "deposit", "withdraw", and any wording suggesting that
+  Strateva moves funds.
+- Claiming anything is real, executed, settled or custodied.
+- Claiming an objective **guarantees** an absolute optimum: `cheapest` does
+  not guarantee "the minimum cost" and `most_reliable` does not guarantee
+  "the maximum reliability" — they are combined scores that **prioritize**
+  that dimension (hence the labels "Prioritize cost", "Prioritize speed",
+  "Prioritize reliability" and "Balanced"; exact semantics in
+  `PRODUCT_CONTRACT.md` §4).
+- Metrics or promises not backed by the API: "the fastest on the market",
+  "save X%", "guaranteed", user or volume figures.
+- **"p95"**, unless it refers to a **real observed statistic** (none exists
+  today; see below). The prudent time is called **"conservative"**.
 
-## Definiciones (explicación sencilla)
+## Definitions (plain-language)
 
-### Coste
-Cuánto cuesta la ruta de extremo a extremo: comisiones fijas, comisiones
-porcentuales y el coste del *spread* de cambio. La API lo da como importe total
-(`total_cost`, **denominado en la moneda de destino**, `destination_currency`)
-y como porcentaje (`total_cost_percentage`). Por tramo, `fixed_fee` y
-`percentage_fee_amount` están denominados en el activo de **entrada** del tramo
-(`source_node.asset`) y `spread_cost` en el activo de **salida**
-(`destination_node.asset`); el copy y la UI muestran siempre esas unidades.
+### Cost
+What the route costs end to end: fixed fees, percentage fees and the FX
+spread cost. The API returns it as a total amount (`total_cost`,
+**denominated in the destination currency**, `destination_currency`) and as a
+percentage (`total_cost_percentage`). Per leg, `fixed_fee` and
+`percentage_fee_amount` are denominated in the leg's **input** asset
+(`source_node.asset`) and `spread_cost` in the **output** asset
+(`destination_node.asset`); copy and UI always show those units.
 
-### FX efectivo (`effective_fx_rate`)
-La **tasa efectiva simulada de extremo a extremo**:
-`estimated_received_amount / sent_amount` — cuántas unidades de la moneda de
-destino resultan por cada unidad de la moneda de origen **después de todos los
-costes** (comisiones y spread). **No** es un tipo real de mercado ni un tipo
-«medio»: es el resultado neto de la simulación y debe presentarse como tal.
+### Effective FX rate (`effective_fx_rate`)
+The **simulated end-to-end effective rate**:
+`estimated_received_amount / sent_amount` — how many destination-currency
+units result per origin-currency unit **after all costs** (fees and spread).
+It is **not** a real market rate and not a mid rate: it is the net result of
+the simulation and must be presented as such.
 
-### Fiabilidad (`reliability_score`)
-Una puntuación **simulada** (0–1) de qué tan probable es que la ruta complete
-sin incidencias, agregada a partir de la fiabilidad de cada tramo. Es sintética:
-no refleja rendimiento real de ningún proveedor.
+### Reliability (`reliability_score`)
+A **simulated** score (0–1) of how likely the route is to complete without
+incident, aggregated from each leg's reliability. It is synthetic: it does not
+reflect any provider's real performance.
 
-### Tiempo esperado (`expected_time_seconds`)
-El tiempo **típico** de la ruta: la suma de los tiempos esperados de cada tramo.
+### Expected time (`expected_time_seconds`)
+The route's **typical** time: the sum of each leg's expected times.
 
-### Tiempo conservador (`conservative_time_seconds`)
-Una **cota prudente**: la suma de las cotas conservadoras por tramo. Se llama
-«conservador», **no** «p95», porque el p95 de una suma no es la suma de los p95
-y hoy no hay datos de variancia por tramo (a menudo coincide con el esperado).
+### Conservative time (`conservative_time_seconds`)
+A **prudent bound**: the sum of per-leg conservative bounds. It is called
+"conservative", **not** "p95", because the p95 of a sum is not the sum of
+p95s and there is no per-leg variance data today (it often equals the
+expected time).
 
-### Fiat disponible (`time_to_fiat_available_seconds`)
-El tiempo (conservador) hasta que el receptor tiene **dinero fiat gastable** en
-su cuenta bancaria de destino. Es la magnitud «comercial» de velocidad.
+### Fiat available (`time_to_fiat_available_seconds`)
+The (conservative) time until the receiver holds **spendable fiat money** in
+their destination bank account. This is the "commercial" speed magnitude.
 
-### Objetivos («Priorizar…»)
-Salvo `fastest`, los objetivos son **puntuaciones ponderadas** sobre valores
-normalizados respecto al conjunto de candidatas: `cheapest` pondera 75 % coste,
-15 % tiempo y 10 % riesgo; `most_reliable` pondera 75 % riesgo, 15 % coste y
-10 % tiempo; `balanced` pondera 45 % coste, 30 % tiempo y 25 % riesgo.
-`fastest` ordena lexicográficamente: tiempo conservador hasta fiat disponible,
-después tiempo esperado, coste y fiabilidad. El copy dice «prioriza», nunca
-«garantiza».
+### Objectives ("Prioritize…")
+Except for `fastest`, the objectives are **weighted scores** over values
+normalized relative to the candidate set: `cheapest` weighs 75% cost, 15%
+time and 10% risk; `most_reliable` weighs 75% risk, 15% cost and 10% time;
+`balanced` weighs 45% cost, 30% time and 25% risk. `fastest` orders
+lexicographically: conservative time to fiat available, then expected time,
+cost and reliability. Copy says "prioritize", never "guarantee".
 
-## Confirmación en cadena vs. fiat disponible
+## Chain confirmation vs. fiat available
 
-Distinción crítica que el copy nunca debe difuminar:
+A critical distinction the copy must never blur:
 
-- **Confirmación (blockchain)** = una transacción on-chain alcanza un nivel de
-  aseguramiento: `included` (en un bloque), `safe` (bloque justificado, aún
-  reversible) o `finalized` (irreversible). Son objetivos **alternativos**, no
-  etapas acumulables.
-- **Fiat disponible** = el dinero ya está **gastable en el banco de destino**.
+- **Confirmation (blockchain)** = an on-chain transaction reaches an assurance
+  level: `included` (in a block), `safe` (justified block, still reversible)
+  or `finalized` (irreversible). These are **alternative** targets, not
+  cumulative stages.
+- **Fiat available** = the money is already **spendable in the destination
+  bank**.
 
-Una blockchain rápida **no** significa fiat disponible: después de la
-confirmación quedan el off-ramp y el payout. El copy debe presentar la
-confirmación en cadena como un paso intermedio, nunca como recepción final.
+A fast blockchain does **not** mean fiat is available: after confirmation the
+off-ramp and the payout remain. Copy must present chain confirmation as an
+intermediate step, never as final receipt.
 
-## «Sintético» (descripción general) vs. procedencia pública por tramo
+## "Synthetic" (general description) vs. public per-leg provenance
 
-Son dos planos distintos que el copy no debe mezclar:
+These are two different planes the copy must not mix:
 
-**1) Descripción general del modelo.** Los datos económicos y de latencia del
-simulador son, hoy, **sintéticos**: plausibles pero inventados. «Sintético» es
-una descripción general correcta del producto y puede usarse en disclaimers,
-metodología y copy global.
+**1) General description of the model.** The simulator's economic and latency
+data is, today, **synthetic**: plausible but invented. "Synthetic" is a
+correct general description of the product and may be used in disclaimers,
+methodology and global copy.
 
-**2) Procedencia pública por tramo.** El DTO público **no** expone ningún campo
-`source`: el frontend **no recibe** la distinción interna entre latencia
-sintética y contractual, y **no debe inventarla** como si fuera visible. Lo que
-sí llega por tramo es:
+**2) Public per-leg provenance.** The public DTO exposes **no** `source`
+field: the frontend **does not receive** the internal distinction between
+synthetic and contractual latency, and must **not invent it** as if it were
+visible. What does arrive per leg is:
 
-- `latency_source`: solo **`observed`** o **`declarative`**.
-- `provenance`: solo **`observed`**, **`declarative`** o **`fallback`**.
-- `provenance = fallback` significa: **existía evidencia observada para el
-  tramo, fue rechazada, y se conservaron los tiempos declarativos** (el motivo
-  llega como código estable en `fallback_reason`).
+- `latency_source`: only **`observed`** or **`declarative`**.
+- `provenance`: only **`observed`**, **`declarative`** or **`fallback`**.
+- `provenance = fallback` means: **observed evidence existed for the leg, it
+  was rejected, and the declarative times were kept** (the reason arrives as
+  a stable code in `fallback_reason`).
 
-Reglas de copy:
+Copy rules:
 
-- No presentar «sintético» como un valor por tramo: por tramo solo existen
-  `observed` / `declarative` / `fallback`.
-- No llamar «observado» a lo declarativo. Si un tramo es `observed`, pueden
-  mostrarse sus fechas (`as_of` / `valid_until`); si no, se presenta como
-  declarativo.
-- No inventar una distinción visible entre latencia «sintética» y
-  «contractual»: el contrato público no la expone.
+- Never present "synthetic" as a per-leg value: per leg only
+  `observed` / `declarative` / `fallback` exist.
+- Never call declarative data "observed". If a leg is `observed`, its dates
+  (`as_of` / `valid_until`) may be shown; otherwise it is presented as
+  declarative.
+- Never invent a visible distinction between "synthetic" and "contractual"
+  latency: the public contract does not expose it.
 
-## Sobre «p95»
+## About "p95"
 
-No usar «p95» en la UI mientras el dato no sea una estadística **observada
-real**. El backend es explícito: usa «conservador» precisamente para no fingir un
-percentil que no calcula. Si en el futuro existieran percentiles observados,
-podrían etiquetarse como tales, con su procedencia.
+Do not use "p95" in the UI while the figure is not a **real observed**
+statistic. The backend is explicit: it uses "conservative" precisely to avoid
+faking a percentile it does not compute. If observed percentiles existed in
+the future, they could be labelled as such, with their provenance.
 
-## i18n
+## Language
 
-- Todo el copy visible es traducible; el español es el idioma de partida.
-- Evitar frases construidas por concatenación de fragmentos; usar cadenas
-  completas con interpolación de datos claramente separada del texto traducible.
-- Los datos numéricos (importes, tipos, tiempos) se **formatean** en la capa de
-  presentación según el idioma/locale, sin alterar los valores que da la API.
+- All visible copy is **English-only** in v1; no language selector, localized
+  routes or hreflang. Future localization is out of scope for this version.
+- Numeric data (amounts, rates, times) is **formatted** in the presentation
+  layer without altering the values the API returns.
+- Technical API identifiers, enum values, endpoint paths, JSON fields,
+  environment variables and code symbols are never translated.

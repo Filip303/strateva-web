@@ -1,57 +1,60 @@
 # Strateva Payment Router — Web
 
-> ⚠️ **Solo simulación. Strateva no ejecuta, custodia, convierte ni transmite
-> fondos de nadie.**
+> ⚠️ **Simulation only. Strateva does not execute, custody, convert or
+> transmit anyone's funds.**
 >
-> Esta web es un laboratorio público y demostrativo. No mueve dinero real, no
-> tiene claves, no conecta con proveedores ni wallets reales, no hace KYC y no
-> es un servicio financiero autorizado. Todos los proveedores, comisiones,
-> tipos de cambio, tiempos y fiabilidades que se muestran son **sintéticos**.
+> This website is a public, demonstrative laboratory. It moves no real money,
+> holds no keys, connects to no real providers or wallets, performs no KYC and
+> is not an authorized financial service. Every provider, fee, FX rate, time
+> and reliability figure shown is **synthetic**.
 
-## Qué es
+## What it is
 
-Este repositorio contiene el **frontend público** de Strateva Payment Router:
-un motor de enrutamiento inteligente de pagos internacionales que modela las
-infraestructuras de pago (transferencias bancarias, SEPA, SWIFT, proveedores,
-FX, raíles de stablecoin) como un grafo dirigido y busca la mejor ruta entre
-un origen y un destino según **coste, tiempo y fiabilidad**.
+This repository contains the **public frontend** of Strateva Payment Router:
+an intelligent routing engine for international payments that models payment
+infrastructures (bank transfers, SEPA, SWIFT, providers, FX, stablecoin rails)
+as a directed graph and searches for the best route between an origin and a
+destination according to **cost, time and reliability**.
 
-La web es un **laboratorio / simulador**: permite comparar rutas simuladas y
-entender por qué una se recomienda frente a otras. No es un producto de envío
-de dinero y no lo será dentro de este alcance.
+The website is a **laboratory / simulator**: it lets you compare simulated
+routes and understand why one is recommended over the others. It is not a
+money-transfer product and will not become one within this scope.
 
-## Estado
+## Status
 
-- **v1: pública, sin registro y sin pagos.** No hay login, no hay cuentas, no
-  se cobra ni se envía nada. La web solo consulta un contrato HTTP público de
-  solo lectura y muestra el resultado.
-- El motor de enrutamiento vive en el repositorio backend público
-  `Filip303/strateva-payment-router` y expone una API REST. Esta web es
-  únicamente su capa de presentación.
+- **v1: public, no sign-up and no payments.** There is no login, there are no
+  accounts, nothing is charged or sent. The website only queries a read-only
+  public HTTP contract and renders the result.
+- The routing engine lives in the public backend repository
+  `Filip303/strateva-payment-router` and exposes a REST API. This website is
+  purely its presentation layer.
 
-## Idioma
+## Language
 
-- El idioma inicial es **español**.
-- La estructura del proyecto se preparará para **i18n** (internacionalización)
-  desde el principio, de modo que añadir traducciones no requiera reescribir
-  los componentes. En esta fase no se incluye todavía código React.
+- **English is the only language of v1.** All visible product content — copy,
+  navigation, URL paths, error messages, metadata and legal-page labels — is
+  in English.
+- No additional locale is included in v1: no language selector, no localized
+  routes, no hreflang. Additional locales are outside the initial launch
+  scope.
 
-## Alcance de este repositorio (fase actual)
+## Scope of this repository (current phase)
 
-Esta fase es de **documentación previa**: se define el contrato funcional de
-la web antes de escribir React. Todavía **no** hay código de aplicación,
-`package.json`, dependencias, componentes ni configuración de despliegue.
+This phase is **documentation-first**: the functional contract of the website
+is defined before any React is written. There is **no** application code,
+`package.json`, dependency, component or deployment configuration yet.
 
-La documentación de producto vive en `docs/` (contrato de producto, mapa del
-sitio, wireframes textuales, mapeo API↔UI y terminología).
+The product documentation lives in `docs/` (product contract, sitemap,
+textual wireframes, API-to-UI mapping and terminology).
 
-## Reglas de contribución
+## Contribution rules
 
-Las normas para contribuir (humanas y automatizadas) están en
-[`AGENTS.md`](./AGENTS.md). En resumen: la web solo consume el contrato HTTP
-público, nunca importa nada del backend privado, no incluye secretos, y toda
-PR se abre en modo borrador sin despliegue.
+The rules for contributing (human and automated) are in
+[`AGENTS.md`](./AGENTS.md). In short: the website only consumes the public
+HTTP contract, never imports anything from the private backend repository,
+contains no secrets, ships English-only visible copy in v1, and every PR is
+opened as a draft with no deploy.
 
-## Licencia
+## License
 
-Pendiente de definir.
+To be defined.
