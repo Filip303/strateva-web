@@ -38,15 +38,16 @@ these rules must be rejected.
 
 ## Analytics (consent-gated only)
 
-Anonymous audience measurement via **Google Tag Manager** (which loads Google
-Analytics) is permitted, but **only** under prior, explicit, opt-in consent
-(GDPR/ePrivacy):
+Anonymous audience measurement via **Google Analytics 4** (`gtag.js`,
+measurement id `G-PNQWWXSPZX`) is permitted, but **only** under prior, explicit,
+opt-in consent (GDPR/ePrivacy):
 
-- Nothing loads before consent. A consent banner offers accept/reject; GTM is
+- Nothing loads before consent. A consent banner offers accept/reject; GA4 is
   injected by a first-party module **only** after "Accept" (see
   `docs/WEB_SECURITY_HEADERS.md`).
-- No other analytics/telemetry/tracking vendor may be added. Adding tags beyond
-  GA, or any new third party, requires updating the CSP contract and the
+- No other analytics/telemetry/tracking vendor may be added, and no other GA4
+  id. Firing GA4 beyond basic audience measurement (e.g. Ads/remarketing), or
+  adding any new third party, requires updating the CSP contract and the
   `/legal/privacy` + `/legal/cookies` pages in the same change.
 - The legal pages must always truthfully describe what is (and is not) loaded.
 

@@ -12,8 +12,8 @@ export default function Privacy() {
       </p>
       <h2>Analytics (opt-in)</h2>
       <p>
-        With your consent, we use Google Tag Manager (which loads Google
-        Analytics) for anonymous audience measurement. It loads{' '}
+        With your consent, we use Google Analytics for anonymous audience
+        measurement. It loads{' '}
         <strong>only after you press “Accept analytics”</strong> in the consent
         banner; if you reject or ignore it, no analytics script or cookie is
         loaded. The legal basis is your consent, which you can withhold or
