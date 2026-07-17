@@ -56,8 +56,9 @@ authoritative functional contract.
 
 ## Prerequisites
 
-- Node.js 22 (LTS) — see `.nvmrc`.
-- npm (bundled with Node 22).
+- Node.js 22.22.2 (LTS) — pinned exactly in `.nvmrc` and `package.json`
+  `engines`.
+- npm 10.9.7 — pinned in `package.json` `packageManager`.
 
 ## Installation
 
