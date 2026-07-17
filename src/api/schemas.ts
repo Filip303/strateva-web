@@ -3,22 +3,45 @@
  *
  * Source of truth: the schema CODE of Filip303/strateva-payment-router at
  * commit a697ca08348d0f1ec19bcb715c7a54ce6dff625f —
- * `api/schemas.py`, `api/public.py`, `domain/models.py`, `domain/latency.py`
- * and `providers/failures.py`. The repository's `examples/quote-response.json`
- * is outdated and is NOT a source of truth.
+ * `api/schemas.py`, `api/public.py`, `domain/models.py`, `domain/enums.py`,
+ * `domain/latency.py` and `providers/failures.py`. The repository's
+ * `examples/quote-response.json` is outdated and is NOT a source of truth.
  *
  * Decimal amounts arrive as JSON strings and are kept as strings end to end —
  * the UI never parses them into floats, never recalculates them and never
  * invents figures the API did not return.
  *
- * A response missing a required field, or with `simulation_only` different
- * from `true`, fails validation and is never partially rendered.
+ * Validation mirrors the contract's own guarantees: exact country/currency
+ * lengths, closed enum sets, valid ISO timestamps and dates, bounded scores,
+ * non-negative durations, `conservative >= expected`, confirmation targets
+ * only (and always) on chain-confirmation legs, and coherent public
+ * provenance. Unknown EXTRA fields are tolerated (stripped) for forward
+ * compatibility — the contract does not forbid additive fields. A response
+ * missing a required field, violating a guarantee, or with `simulation_only`
+ * different from `true` fails safe and is never partially rendered.
  */
 
 import { z } from 'zod'
 
 /** Decimal serialized by the backend as a JSON string. Kept verbatim. */
 const decimalString = z.string().regex(/^-?\d+(\.\d+)?$/, 'expected a decimal string')
+
+/** ISO 3166-1 alpha-2 country code (exactly 2 characters). */
+const countryCode = z.string().length(2)
+
+/** ISO 4217 currency code (exactly 3 characters). */
+const currencyCode = z.string().length(3)
+
+/** ISO datetime; accepts an offset or 'Z', and a naive timestamp. */
+const isoDateTime = z.iso.datetime({ offset: true, local: true })
+
+/** Exact YYYY-MM-DD date (the backend validates the same round-trip form). */
+const isoDate = z.iso.date()
+
+const nonNegativeInt = z.number().int().min(0)
+
+/** Dimensionless score the domain bounds to [0, 1]. */
+const unitScore = z.number().min(0).max(1)
 
 export const OBJECTIVES = ['cheapest', 'fastest', 'most_reliable', 'balanced'] as const
 export const objectiveSchema = z.enum(OBJECTIVES)
@@ -32,14 +55,36 @@ export const OBJECTIVE_LABELS: Record<Objective, string> = {
   balanced: 'Balanced',
 }
 
+/** domain/enums.py AccountType — closed set. */
+const accountTypeSchema = z.enum([
+  'bank_account',
+  'provider_balance',
+  'onchain',
+  'correspondent',
+])
+
+/** domain/enums.py OperationType — closed set. */
+const operationTypeSchema = z.enum([
+  'local_transfer',
+  'sepa_transfer',
+  'swift_transfer',
+  'provider_transfer',
+  'fx_conversion',
+  'onramp',
+  'offramp',
+  'onchain_transfer',
+  'bridge',
+  'local_payout',
+])
+
 // --- GET /api/v1/corridors -------------------------------------------------
 
 export const corridorInfoSchema = z.object({
-  corridor_id: z.string(),
-  origin_country: z.string(),
-  destination_country: z.string(),
-  source_currency: z.string(),
-  destination_currency: z.string(),
+  corridor_id: z.string().min(1),
+  origin_country: countryCode,
+  destination_country: countryCode,
+  source_currency: currencyCode,
+  destination_currency: currencyCode,
 })
 export type CorridorInfo = z.infer<typeof corridorInfoSchema>
 
@@ -60,25 +105,25 @@ export interface QuoteRequestBody {
 
 const paymentNodeSchema = z.object({
   node_id: z.string(),
-  asset: z.string(),
+  asset: z.string().min(1),
   network: z.string().nullable(),
-  country: z.string().nullable(),
-  account_type: z.string(),
+  country: countryCode.nullable(),
+  account_type: accountTypeSchema,
   provider: z.string().nullable(),
   metadata: z.record(z.string(), z.string()),
 })
 
 const routeStepSchema = z.object({
-  position: z.number().int().min(0),
+  position: nonNegativeInt,
   source_node: paymentNodeSchema,
   destination_node: paymentNodeSchema,
   provider: z.string(),
-  operation_type: z.string(),
+  operation_type: operationTypeSchema,
   fixed_fee: decimalString,
   percentage_fee_amount: decimalString,
   spread_cost: decimalString,
-  estimated_time_seconds: z.number().int(),
-  reliability_score: z.number(),
+  estimated_time_seconds: nonNegativeInt,
+  reliability_score: unitScore,
   amount_in: decimalString,
   amount_out: decimalString,
 })
@@ -93,50 +138,118 @@ const latencyComponentSchema = z.enum([
   'bank_settlement',
 ])
 
-const latencyBreakdownEntrySchema = z.object({
-  component: latencyComponentSchema,
-  expected_seconds: z.number().int().min(0),
-  conservative_seconds: z.number().int().min(0),
-})
+const latencyBreakdownEntrySchema = z
+  .object({
+    component: latencyComponentSchema,
+    expected_seconds: nonNegativeInt,
+    conservative_seconds: nonNegativeInt,
+  })
+  .refine((entry) => entry.conservative_seconds >= entry.expected_seconds, {
+    message: 'conservative_seconds must be >= expected_seconds',
+  })
 
-const publicLatencyLegSchema = z.object({
-  position: z.number().int().min(0),
-  edge_id: z.string(),
-  provider: z.string(),
-  component: latencyComponentSchema,
-  confirmation_target: z.enum(['included', 'safe', 'finalized']).nullable(),
-  expected_seconds: z.number().int().min(0),
-  conservative_seconds: z.number().int().min(0),
-  availability: z.enum(['continuous', 'banking_hours']),
-  basis: z.enum(['operational_duration', 'calendar_elapsed']),
-  latency_source: z.enum(['observed', 'declarative']),
-  provenance: z.enum(['observed', 'declarative', 'fallback']),
-  fallback_reason: z.string().nullable(),
-  as_of: z.string().nullable(),
-  valid_until: z.string().nullable(),
-})
+const publicLatencyLegSchema = z
+  .object({
+    position: nonNegativeInt,
+    edge_id: z.string(),
+    provider: z.string(),
+    component: latencyComponentSchema,
+    confirmation_target: z.enum(['included', 'safe', 'finalized']).nullable(),
+    expected_seconds: nonNegativeInt,
+    conservative_seconds: nonNegativeInt,
+    availability: z.enum(['continuous', 'banking_hours']),
+    basis: z.enum(['operational_duration', 'calendar_elapsed']),
+    latency_source: z.enum(['observed', 'declarative']),
+    provenance: z.enum(['observed', 'declarative', 'fallback']),
+    fallback_reason: z.string().nullable(),
+    as_of: isoDate.nullable(),
+    valid_until: isoDate.nullable(),
+  })
+  .superRefine((leg, ctx) => {
+    if (leg.conservative_seconds < leg.expected_seconds) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'conservative_seconds must be >= expected_seconds',
+      })
+    }
+    // A confirmation target exists ONLY (and always) on a chain-confirmation
+    // leg (domain/latency.py LatencyProfile invariants).
+    if (leg.component === 'chain_confirmation') {
+      if (leg.confirmation_target === null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'a chain_confirmation leg requires a confirmation_target',
+        })
+      }
+    } else if (leg.confirmation_target !== null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'confirmation_target is only valid on a chain_confirmation leg',
+      })
+    }
+    // Public provenance coherence (api/public.py _public_leg):
+    // observed <-> latency_source 'observed' and carries as_of; fallback means
+    // observed evidence was rejected (reason present, times declarative);
+    // declarative legs carry no evidence dates and no fallback reason.
+    const observed = leg.latency_source === 'observed'
+    if ((leg.provenance === 'observed') !== observed) {
+      ctx.addIssue({
+        code: 'custom',
+        message: "provenance 'observed' must match latency_source 'observed'",
+      })
+    }
+    if (leg.provenance === 'fallback' && leg.fallback_reason === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: "provenance 'fallback' requires a fallback_reason",
+      })
+    }
+    if (leg.provenance === 'declarative' && leg.fallback_reason !== null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: "a declarative leg carries no fallback_reason",
+      })
+    }
+    if (observed && leg.as_of === null) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'an observed leg must carry an as_of date',
+      })
+    }
+    if (!observed && (leg.as_of !== null || leg.valid_until !== null)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'evidence dates are only exposed for observed legs',
+      })
+    }
+  })
 
-export const publicRouteResultSchema = z.object({
-  route_id: z.string(),
-  simulation_only: z.literal(true),
-  steps: z.array(routeStepSchema),
-  total_cost: decimalString,
-  total_cost_percentage: decimalString,
-  total_time_seconds: z.number().int(),
-  expected_time_seconds: z.number().int(),
-  conservative_time_seconds: z.number().int(),
-  time_to_fiat_available_seconds: z.number().int(),
-  latency_breakdown: z.array(latencyBreakdownEntrySchema),
-  latency_legs: z.array(publicLatencyLegSchema),
-  operates_24_7: z.boolean(),
-  effective_fx_rate: decimalString,
-  estimated_received_amount: decimalString,
-  reliability_score: z.number(),
-  objective_score: z.number(),
-  expires_at: z.string(),
-  explanation: z.string(),
-  warnings: z.array(z.string()),
-})
+export const publicRouteResultSchema = z
+  .object({
+    route_id: z.string(),
+    simulation_only: z.literal(true),
+    steps: z.array(routeStepSchema),
+    total_cost: decimalString,
+    total_cost_percentage: decimalString,
+    total_time_seconds: nonNegativeInt,
+    expected_time_seconds: nonNegativeInt,
+    conservative_time_seconds: nonNegativeInt,
+    time_to_fiat_available_seconds: nonNegativeInt,
+    latency_breakdown: z.array(latencyBreakdownEntrySchema),
+    latency_legs: z.array(publicLatencyLegSchema),
+    operates_24_7: z.boolean(),
+    effective_fx_rate: decimalString,
+    estimated_received_amount: decimalString,
+    reliability_score: unitScore,
+    objective_score: z.number(),
+    expires_at: isoDateTime,
+    explanation: z.string(),
+    warnings: z.array(z.string()),
+  })
+  .refine(
+    (route) => route.conservative_time_seconds >= route.expected_time_seconds,
+    { message: 'conservative time must be >= expected time' },
+  )
 export type PublicRouteResult = z.infer<typeof publicRouteResultSchema>
 
 const providerFailureSchema = z.object({
@@ -150,18 +263,18 @@ const providerFailureSchema = z.object({
     'unsupported',
   ]),
   retryable: z.boolean(),
-  occurred_at: z.string(),
+  occurred_at: isoDateTime,
   safe_message: z.string(),
 })
 
 export const quoteResponseSchema = z.object({
   disclaimer: z.string(),
   simulation_only: z.literal(true),
-  generated_at: z.string(),
-  quote_expires_at: z.string(),
+  generated_at: isoDateTime,
+  quote_expires_at: isoDateTime,
   sent_amount: decimalString,
-  source_currency: z.string(),
-  destination_currency: z.string(),
+  source_currency: currencyCode,
+  destination_currency: currencyCode,
   objective: objectiveSchema,
   recommended_route: publicRouteResultSchema,
   alternative_routes: z.array(publicRouteResultSchema),

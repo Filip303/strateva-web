@@ -190,3 +190,65 @@ describe('parseRetryAfter', () => {
     expect(parseRetryAfter('not-a-value')).toBe(30)
   })
 })
+
+describe('timeout covers the whole body', () => {
+  it('times out when fetch resolves 200 but the body stalls until abort', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const stalled = {
+          ok: true,
+          status: 200,
+          headers: new Headers(),
+          json: () =>
+            new Promise((_resolve, reject) => {
+              init?.signal?.addEventListener('abort', () =>
+                reject(new DOMException('aborted', 'AbortError')),
+              )
+            }),
+        }
+        return stalled as unknown as Response
+      }),
+    )
+    const pending = requestQuote(QUOTE_BODY)
+    const assertion = expectApiError(pending, 'timeout')
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS)
+    await assertion
+  })
+
+  it('a genuine JSON failure without an abort stays a contract error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('not-json{', { status: 200 })),
+    )
+    await expectApiError(fetchCorridors(), 'contract')
+  })
+})
+
+describe('VITE_API_URL hardening', () => {
+  it('accepts a plain origin and a trailing slash, producing the same endpoint', async () => {
+    for (const url of ['http://localhost:8000', 'http://localhost:8000/']) {
+      vi.stubEnv('VITE_API_URL', url)
+      const fetchMock = vi.fn(async () => jsonResponse(corridorsFixture))
+      vi.stubGlobal('fetch', fetchMock)
+      await fetchCorridors()
+      const [calledUrl] = fetchMock.mock.calls[0] as unknown as [string]
+      expect(String(calledUrl)).toBe('http://localhost:8000/api/v1/corridors')
+    }
+  })
+
+  it.each([
+    ['credentials', 'http://user:secret@localhost:8000'],
+    ['a query string', 'http://localhost:8000/?x=1'],
+    ['a fragment', 'http://localhost:8000/#frag'],
+    ['a base path', 'http://localhost:8000/api'],
+    ['a non-HTTP protocol', 'ws://localhost:8000'],
+  ])('rejects a URL with %s and never calls fetch', async (_label, url) => {
+    vi.stubEnv('VITE_API_URL', url)
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await expectApiError(fetchCorridors(), 'config')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})

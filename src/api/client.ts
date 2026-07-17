@@ -53,6 +53,13 @@ function errorForStatus(status: number, retryAfter: string | null): ApiError {
   return new ApiError('server')
 }
 
+function isAbort(error: unknown, controller: AbortController): boolean {
+  return (
+    controller.signal.aborted ||
+    (error instanceof DOMException && error.name === 'AbortError')
+  )
+}
+
 async function request<Schema extends z.ZodType>(
   path: string,
   schema: Schema,
@@ -63,47 +70,60 @@ async function request<Schema extends z.ZodType>(
     throw new ApiError('config')
   }
 
+  // The abort timer stays armed for the WHOLE request lifecycle: headers,
+  // full body read and JSON parsing. fetch() can resolve as soon as headers
+  // arrive while the body stalls forever — clearing the timer there would
+  // leave no timeout at all.
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
-  let response: Response
   try {
-    response = await fetch(`${baseUrl}${path}`, {
-      method: init?.method ?? 'GET',
-      credentials: 'omit',
-      headers: {
-        Accept: 'application/json',
-        ...(init?.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
-      signal: controller.signal,
-    })
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new ApiError('timeout')
+    let response: Response
+    try {
+      response = await fetch(`${baseUrl}${path}`, {
+        method: init?.method ?? 'GET',
+        credentials: 'omit',
+        headers: {
+          Accept: 'application/json',
+          ...(init?.body !== undefined
+            ? { 'Content-Type': 'application/json' }
+            : {}),
+        },
+        body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+        signal: controller.signal,
+      })
+    } catch (error) {
+      if (isAbort(error, controller)) {
+        throw new ApiError('timeout')
+      }
+      throw new ApiError('network')
     }
-    throw new ApiError('network')
+
+    if (!response.ok) {
+      // The response body of an HTTP error is deliberately never read.
+      throw errorForStatus(response.status, response.headers.get('Retry-After'))
+    }
+
+    let payload: unknown
+    try {
+      payload = await response.json()
+    } catch (error) {
+      // An abort while the body is being read is a timeout, not a contract
+      // violation; a genuine JSON failure without an abort stays 'contract'.
+      if (isAbort(error, controller)) {
+        throw new ApiError('timeout')
+      }
+      throw new ApiError('contract')
+    }
+
+    const parsed = schema.safeParse(payload)
+    if (!parsed.success) {
+      throw new ApiError('contract')
+    }
+    return parsed.data
   } finally {
     clearTimeout(timer)
   }
-
-  if (!response.ok) {
-    // The response body is deliberately never read into an error message.
-    throw errorForStatus(response.status, response.headers.get('Retry-After'))
-  }
-
-  let payload: unknown
-  try {
-    payload = await response.json()
-  } catch {
-    throw new ApiError('contract')
-  }
-
-  const parsed = schema.safeParse(payload)
-  if (!parsed.success) {
-    throw new ApiError('contract')
-  }
-  return parsed.data
 }
 
 /** GET /api/v1/corridors — the only source of available corridors. */

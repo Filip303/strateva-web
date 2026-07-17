@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { requestQuote } from '../api/client'
-import { ApiError, toApiError } from '../api/errors'
+import { toApiError } from '../api/errors'
 import { useCorridors } from '../api/hooks'
 import {
   OBJECTIVE_LABELS,
@@ -11,8 +11,17 @@ import {
 } from '../api/schemas'
 import { SIMULATION_NOTICE } from '../components/Layout'
 import { corridorLabel, formatSeconds } from '../lib/format'
+import { useRetryCountdown } from '../lib/useRetryCountdown'
 
 const AMOUNT_PATTERN = /^\d+(\.\d+)?$/
+
+/** Positive-decimal check on the raw STRING — no Number/parseFloat/parseInt:
+ * the exact text is preserved and float underflow can never turn a tiny
+ * positive amount into zero. Positive = valid format + at least one non-zero
+ * digit (rejects '0', '0.0', '000.000', …). */
+function isPositiveDecimalString(value: string): boolean {
+  return AMOUNT_PATTERN.test(value) && /[1-9]/.test(value)
+}
 
 function RouteCard({
   title,
@@ -71,25 +80,18 @@ export default function Simulator() {
   const [amount, setAmount] = useState('')
   const [objective, setObjective] = useState<Objective>('balanced')
   const [formError, setFormError] = useState<string | null>(null)
-  const [retrySeconds, setRetrySeconds] = useState(0)
   const outcomeRef = useRef<HTMLDivElement>(null)
 
   const quote = useMutation({
     mutationFn: requestQuote,
     retry: false,
-    onError: (error: unknown) => {
-      if (error instanceof ApiError && error.kind === 'rate_limited') {
-        setRetrySeconds(error.retryAfterSeconds ?? 30)
-      }
-    },
   })
 
-  // Retry-After countdown: the button stays disabled until it reaches zero.
-  useEffect(() => {
-    if (retrySeconds <= 0) return
-    const timer = setTimeout(() => setRetrySeconds((s) => s - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [retrySeconds])
+  // Retry-After countdowns (manual retry only): the submit button stays
+  // disabled after a rate-limited quote, and the corridors Retry button
+  // stays disabled after a rate-limited corridors load.
+  const retrySeconds = useRetryCountdown(quote.error)
+  const corridorsRetrySeconds = useRetryCountdown(corridors.error)
 
   // Move focus to the outcome block when the request settles.
   useEffect(() => {
@@ -106,7 +108,7 @@ export default function Simulator() {
     event.preventDefault()
     if (!selected) return
     const trimmed = amount.trim()
-    if (!AMOUNT_PATTERN.test(trimmed) || Number(trimmed) <= 0) {
+    if (!isPositiveDecimalString(trimmed)) {
       setFormError('Enter an amount greater than zero.')
       return
     }
@@ -139,9 +141,13 @@ export default function Simulator() {
       {corridors.isError && (
         <div role="alert" className="alert">
           <p>{toApiError(corridors.error).message}</p>
+          {corridorsRetrySeconds > 0 && (
+            <p>You can retry in {corridorsRetrySeconds} s (manual retry only).</p>
+          )}
           <button
             type="button"
             className="cta"
+            disabled={corridorsRetrySeconds > 0}
             onClick={() => void corridors.refetch()}
           >
             Retry

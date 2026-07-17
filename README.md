@@ -79,9 +79,11 @@ VITE_API_URL=http://localhost:8000
 ```
 
 - `VITE_API_URL` is the **only** backend URL. There is deliberately **no
-  fallback** (no Railway/staging/production default): if it is missing or not
-  a valid `http`/`https` URL, the app fails safe with a sanitized message and
-  sends no request.
+  fallback** (no Railway/staging/production default): if it is missing or
+  invalid, the app fails safe with a sanitized message and sends no request.
+- Only a **clean `http`/`https` origin** is accepted (an optional trailing
+  slash is tolerated). URLs carrying credentials, a query string, a fragment
+  or a base path are rejected — base-path support is out of scope for v1.
 - **Every `VITE_*` variable is public**: Vite embeds it into the browser
   bundle. Never put secrets, tokens or private endpoints in one.
 - Requests use `credentials: "omit"`, a 15-second timeout, and are never

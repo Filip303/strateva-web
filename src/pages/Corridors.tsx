@@ -1,10 +1,12 @@
 import { toApiError } from '../api/errors'
 import { useCorridors } from '../api/hooks'
 import { corridorLabel } from '../lib/format'
+import { useRetryCountdown } from '../lib/useRetryCountdown'
 
 export default function Corridors() {
   const corridors = useCorridors()
   const corridorList = corridors.data ?? []
+  const retrySeconds = useRetryCountdown(corridors.error)
 
   return (
     <>
@@ -20,9 +22,13 @@ export default function Corridors() {
       {corridors.isError && (
         <div role="alert" className="alert">
           <p>{toApiError(corridors.error).message}</p>
+          {retrySeconds > 0 && (
+            <p>You can retry in {retrySeconds} s (manual retry only).</p>
+          )}
           <button
             type="button"
             className="cta"
+            disabled={retrySeconds > 0}
             onClick={() => void corridors.refetch()}
           >
             Retry

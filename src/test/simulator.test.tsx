@@ -1,7 +1,7 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import {
   CORRIDOR_OPTION_LABEL,
@@ -137,7 +137,7 @@ describe('quote request', () => {
     expect(body.objective).toBe('fastest')
   })
 
-  it.each(['0', '-5', 'abc', ''])(
+  it.each(['0', '0.0', '000.000', '-5', 'abc', ''])(
     'does not send a request for invalid amount %j',
     async (badAmount) => {
       const fetchMock = installFetch()
@@ -154,6 +154,22 @@ describe('quote request', () => {
       expect(postCalls(fetchMock)).toHaveLength(0)
     },
   )
+
+  it('validates amount as a string: a tiny positive decimal is sent exactly, never via floats', async () => {
+    // Number() underflows this to 0, so any float-based validation would
+    // wrongly reject it; string validation accepts it and sends it verbatim.
+    const tinyPositive = `0.${'0'.repeat(400)}1`
+    const fetchMock = installFetch()
+    renderSimulator()
+    await waitForForm()
+    fireEvent.change(screen.getByLabelText('Amount (AAA)'), {
+      target: { value: tinyPositive },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Compare routes' }))
+    await screen.findByRole('heading', { name: 'Results' })
+    const body = JSON.parse(postCalls(fetchMock)[0][1]?.body as string)
+    expect(body.amount).toBe(tinyPositive)
+  })
 
   it('disables the button and announces loading while the request is in flight', async () => {
     installFetch({ quote: () => new Promise<never>(() => {}) })
@@ -372,5 +388,65 @@ describe('error states', () => {
     await waitFor(() =>
       expect(document.getElementById('quote-outcome')).toHaveFocus(),
     )
+  })
+})
+
+describe('corridors rate limiting on the simulator (Retry-After)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('blocks the corridors Retry button for Retry-After seconds; only a manual click refetches', async () => {
+    let calls = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1
+        if (calls === 1) {
+          return jsonResponse(
+            {},
+            { status: 429, headers: { 'Retry-After': '2' } },
+          )
+        }
+        return jsonResponse(corridorsFixture)
+      }),
+    )
+    vi.useFakeTimers()
+    renderSimulator()
+    for (let i = 0; i < 50 && !screen.queryByRole('alert'); i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10)
+      })
+    }
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(
+      'Too many simulations in a row. Please wait before retrying.',
+    )
+    const retry = screen.getByRole('button', { name: 'Retry' })
+    expect(retry).toBeDisabled()
+    expect(screen.getByText(/You can retry in 2 s/)).toBeInTheDocument()
+
+    // Clicking while blocked, or advancing less than the full window,
+    // sends nothing.
+    fireEvent.click(retry)
+    expect(calls).toBe(1)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(retry).toBeDisabled()
+    fireEvent.click(retry)
+    expect(calls).toBe(1)
+
+    // After the countdown completes the button enables — with NO automatic
+    // refetch; only the manual click issues the second GET.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(retry).toBeEnabled()
+    expect(calls).toBe(1)
+    vi.useRealTimers()
+    fireEvent.click(retry)
+    await waitForForm()
+    expect(calls).toBe(2)
   })
 })
