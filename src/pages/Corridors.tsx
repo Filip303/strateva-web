@@ -1,16 +1,55 @@
+import { toApiError } from '../api/errors'
+import { useCorridors } from '../api/hooks'
+import { corridorLabel } from '../lib/format'
+import { useRetryCountdown } from '../lib/useRetryCountdown'
+
 export default function Corridors() {
+  const corridors = useCorridors()
+  const corridorList = corridors.data ?? []
+  const retrySeconds = useRetryCountdown(corridors.error)
+
   return (
     <>
       <h1>Corridors</h1>
       <p>
         A corridor is an origin-and-destination pair the simulator can model,
-        with its own currencies and route families.
+        with its own currencies and route families. The list below comes
+        exclusively from the public API — nothing is hardcoded.
       </p>
-      <p className="muted">
-        Available corridors will be loaded from the public API in the next
-        functional change. No corridor is hardcoded in this page: what you
-        will see here always comes from the API.
-      </p>
+
+      {corridors.isPending && <p>Loading corridors…</p>}
+
+      {corridors.isError && (
+        <div role="alert" className="alert">
+          <p>{toApiError(corridors.error).message}</p>
+          {retrySeconds > 0 && (
+            <p>You can retry in {retrySeconds} s (manual retry only).</p>
+          )}
+          <button
+            type="button"
+            className="cta"
+            disabled={retrySeconds > 0}
+            onClick={() => void corridors.refetch()}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {corridors.isSuccess && corridorList.length === 0 && (
+        <p>No corridors are currently available from the API.</p>
+      )}
+
+      {corridors.isSuccess && corridorList.length > 0 && (
+        <ul>
+          {corridorList.map((corridor) => (
+            <li key={corridor.corridor_id}>
+              {corridorLabel(corridor)}{' '}
+              <span className="muted">({corridor.corridor_id})</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   )
 }

@@ -105,12 +105,7 @@ describe('copy rules', () => {
     )
   })
 
-  it('shows no fake financial result on the simulator page', () => {
-    const { container } = renderAt('/simulator')
-    const text = container.textContent ?? ''
-    // No digits at all: no amounts, rates, times or percentages.
-    expect(text).not.toMatch(/\d/)
-    // No currency codes or percent signs.
-    expect(text).not.toMatch(/\b(EUR|MXN|GBP|USD|USDC)\b|%/)
-  })
+  // The "no invented figures" regression lives in simulator.test.tsx: before a
+  // quote the outcome block shows no figures; after a mocked response only the
+  // exact figures received from the API are rendered.
 })

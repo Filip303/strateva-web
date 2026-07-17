@@ -177,3 +177,98 @@ p {
     scroll-behavior: auto !important;
   }
 }
+
+/* Forms (simulator) */
+.field {
+  margin-bottom: var(--space-m);
+}
+
+.field > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+}
+
+input[type='text'],
+select {
+  font: inherit;
+  padding: var(--space-s);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-s);
+  max-width: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+fieldset.field {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  padding: var(--space-s) var(--space-m);
+  margin: 0 0 var(--space-m);
+}
+
+legend {
+  font-weight: 600;
+  padding: 0 var(--space-xs);
+}
+
+.radio-option {
+  display: block;
+  margin: var(--space-xs) 0;
+}
+
+button.cta {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+button.cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sim-inline-note {
+  color: var(--color-notice-text);
+  font-weight: 600;
+  margin-top: var(--space-s);
+}
+
+.alert {
+  background: #fef2f2;
+  border: 1px solid #b91c1c;
+  color: #7f1d1d;
+  padding: var(--space-s) var(--space-m);
+  border-radius: var(--radius-s);
+  margin: var(--space-m) 0;
+}
+
+.route-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  padding: var(--space-m);
+  margin: var(--space-m) 0;
+}
+
+.route-card h3 {
+  margin-top: 0;
+}
+
+.route-card ul,
+.route-warnings {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-s);
+}
+
+.route-card li,
+.route-warnings li {
+  margin-bottom: var(--space-xs);
+  overflow-wrap: anywhere;
+}
+
+.loading-status {
+  min-height: 1.5rem;
+  margin: var(--space-s) 0;
+}

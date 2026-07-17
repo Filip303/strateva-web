@@ -45,10 +45,12 @@ The repository now contains the **frontend foundation**: a React + TypeScript
 skeleton pages for every route in the sitemap, unit tests (Vitest + Testing
 Library), Playwright smoke tests and a verification-only CI workflow.
 
-**This foundation makes no API calls and has no deployment configuration.**
-The simulator page is a placeholder; corridors and results will be loaded from
-the public API in a later, reviewed change. There are no analytics, no
-tracking, no cookies, no storage and no external requests of any kind.
+The simulator and the corridors page now consume the **public HTTP contract
+only** — `GET /api/v1/corridors` and `POST /api/v1/routes/quote` on the URL
+configured via `VITE_API_URL`, with every response validated at runtime
+before rendering. That is the app's **only** network surface: there are no
+analytics, no tracking, no cookies, no browser storage and **no deployment
+configuration**. Quote requests are never retried automatically.
 
 The product documentation lives in `docs/` (product contract, sitemap,
 textual wireframes, API-to-UI mapping and terminology) and remains the
@@ -67,6 +69,26 @@ npm ci
 ```
 
 Installs exactly the dependency tree pinned in `package-lock.json`.
+
+## Configuration
+
+Copy `.env.example` to `.env` and set the public API base URL:
+
+```bash
+VITE_API_URL=http://localhost:8000
+```
+
+- `VITE_API_URL` is the **only** backend URL. There is deliberately **no
+  fallback** (no Railway/staging/production default): if it is missing or
+  invalid, the app fails safe with a sanitized message and sends no request.
+- Only a **clean `http`/`https` origin** is accepted (an optional trailing
+  slash is tolerated). URLs carrying credentials, a query string, a fragment
+  or a base path are rejected — base-path support is out of scope for v1.
+- **Every `VITE_*` variable is public**: Vite embeds it into the browser
+  bundle. Never put secrets, tokens or private endpoints in one.
+- Requests use `credentials: "omit"`, a 15-second timeout, and are never
+  retried automatically (retrying is always a manual user action; a 429's
+  `Retry-After` is honored before the retry button re-enables).
 
 ## Local development
 
@@ -95,8 +117,9 @@ pull requests and on `main`. It verifies only — it never deploys.
 ├── docs/                  Product contract (authoritative, unchanged)
 ├── e2e/                   Playwright smoke tests
 ├── src/
+│   ├── api/               Typed client, Zod contract schemas, config, errors
 │   ├── components/        Shared accessible layout
-│   ├── pages/             One skeleton page per route
+│   ├── pages/             One page per route (simulator + corridors are live)
 │   ├── test/              Unit tests and test setup
 │   ├── App.tsx            Route table
 │   ├── main.tsx           Entry point

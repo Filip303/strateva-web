@@ -1,3 +1,5 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import About from './pages/About'
@@ -12,20 +14,32 @@ import Privacy from './pages/Privacy'
 import Simulator from './pages/Simulator'
 
 export default function App() {
+  // No automatic retries anywhere: retrying is always a manual user action.
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, refetchOnWindowFocus: false },
+          mutations: { retry: false },
+        },
+      }),
+  )
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="simulator" element={<Simulator />} />
-        <Route path="how-it-works" element={<HowItWorks />} />
-        <Route path="corridors" element={<Corridors />} />
-        <Route path="methodology" element={<Methodology />} />
-        <Route path="about" element={<About />} />
-        <Route path="legal/legal-notice" element={<LegalNotice />} />
-        <Route path="legal/privacy" element={<Privacy />} />
-        <Route path="legal/cookies" element={<Cookies />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+    <QueryClientProvider client={queryClient}>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="simulator" element={<Simulator />} />
+          <Route path="how-it-works" element={<HowItWorks />} />
+          <Route path="corridors" element={<Corridors />} />
+          <Route path="methodology" element={<Methodology />} />
+          <Route path="about" element={<About />} />
+          <Route path="legal/legal-notice" element={<LegalNotice />} />
+          <Route path="legal/privacy" element={<Privacy />} />
+          <Route path="legal/cookies" element={<Cookies />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </QueryClientProvider>
   )
 }

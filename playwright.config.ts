@@ -27,9 +27,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
+    // The e2e build points VITE_API_URL at the preview origin itself; every
+    // /api/v1/* request is intercepted with page.route fixtures, so the e2e
+    // suite performs no external network calls and needs no real backend.
+    command:
+      'npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    timeout: 120_000,
+    env: { VITE_API_URL: 'http://127.0.0.1:4173' },
   },
 })
