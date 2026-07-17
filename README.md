@@ -40,12 +40,70 @@ money-transfer product and will not become one within this scope.
 
 ## Scope of this repository (current phase)
 
-This phase is **documentation-first**: the functional contract of the website
-is defined before any React is written. There is **no** application code,
-`package.json`, dependency, component or deployment configuration yet.
+The repository now contains the **frontend foundation**: a React + TypeScript
++ Vite application with React Router, an accessible shared layout, English-only
+skeleton pages for every route in the sitemap, unit tests (Vitest + Testing
+Library), Playwright smoke tests and a verification-only CI workflow.
+
+**This foundation makes no API calls and has no deployment configuration.**
+The simulator page is a placeholder; corridors and results will be loaded from
+the public API in a later, reviewed change. There are no analytics, no
+tracking, no cookies, no storage and no external requests of any kind.
 
 The product documentation lives in `docs/` (product contract, sitemap,
-textual wireframes, API-to-UI mapping and terminology).
+textual wireframes, API-to-UI mapping and terminology) and remains the
+authoritative functional contract.
+
+## Prerequisites
+
+- Node.js 22.22.2 (LTS) — pinned exactly in `.nvmrc` and `package.json`
+  `engines`.
+- npm 10.9.7 — pinned in `package.json` `packageManager`.
+
+## Installation
+
+```bash
+npm ci
+```
+
+Installs exactly the dependency tree pinned in `package-lock.json`.
+
+## Local development
+
+```bash
+npm run dev       # start the Vite dev server
+npm run build     # production build (output in dist/)
+npm run preview   # serve the production build locally
+```
+
+## Verification
+
+```bash
+npm run lint       # ESLint
+npm run typecheck  # strict TypeScript, no emit
+npm run test       # unit tests (Vitest + Testing Library)
+npm run build      # production build
+npm run test:e2e   # Playwright smoke tests (run npm run build first)
+```
+
+The CI workflow (`.github/workflows/ci.yml`) runs exactly these steps on
+pull requests and on `main`. It verifies only — it never deploys.
+
+## Project structure
+
+```
+├── docs/                  Product contract (authoritative, unchanged)
+├── e2e/                   Playwright smoke tests
+├── src/
+│   ├── components/        Shared accessible layout
+│   ├── pages/             One skeleton page per route
+│   ├── test/              Unit tests and test setup
+│   ├── App.tsx            Route table
+│   ├── main.tsx           Entry point
+│   └── index.css          Neutral CSS foundation (variables, focus, notice)
+├── index.html             English metadata, no third-party assets
+└── .github/workflows/     Verification-only CI
+```
 
 ## Contribution rules
 
