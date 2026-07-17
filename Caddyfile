@@ -1,0 +1,81 @@
+# Caddy configuration for serving the static Vite build on Railway.
+#
+# TEMPLATE: `__API_ORIGIN__` is replaced at Docker build time with the
+# validated `VITE_API_URL` origin (scripts/validate-api-origin.mjs), so the
+# CSP `connect-src` and the app bundle are always driven by the same single
+# value. The rendered file is what ships in the image; this template is the
+# auditable source.
+#
+# Railway terminates TLS at its edge and injects PORT, so Caddy only speaks
+# plain HTTP on that port and manages no certificates.
+
+{
+	# No runtime mutation surface: the admin API is disabled and the config
+	# is never persisted or autosaved.
+	admin off
+	persist_config off
+	# TLS is Railway's job; never try to provision certificates.
+	auto_https off
+}
+
+:{$PORT} {
+	# No access log is configured: per-request logs (client IPs, paths,
+	# query strings, headers, user input) are never written. Caddy still
+	# reports process-level errors on stderr.
+
+	encode zstd gzip
+
+	# Security headers on EVERY response (HTML, assets, health, fallback) —
+	# the exact contract from docs/WEB_SECURITY_HEADERS.md.
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' __API_ORIGIN__; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		-Server
+	}
+
+	# HSTS is sent ONLY when the deployment explicitly declares itself the
+	# production HTTPS origin with STRATEVA_HSTS=production. Staging sets
+	# nothing; any other or invalid value fails closed (no header, which is
+	# the restrictive default — never a permissive config). No `preload`
+	# until the domain strategy is final (docs/WEB_SECURITY_HEADERS.md).
+	@hsts_production expression `{env.STRATEVA_HSTS} == "production"`
+	header @hsts_production Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	# Rollback-friendly caching: everything revalidates by default (HTML,
+	# robots.txt, sitemap.xml, site.webmanifest, health), so a redeploy —
+	# including a rollback — takes effect immediately. Only the hashed,
+	# immutable Vite assets under /assets/ are cached long-term; their
+	# filenames change on every content change. The `?` op sets the
+	# default only where the more specific /assets/* rule did not.
+	header /assets/* Cache-Control "public, max-age=31536000, immutable"
+	header ?Cache-Control "no-cache"
+
+	# Static health endpoint: constant body, no version, no internal info.
+	handle /health {
+		respond "ok" 200
+	}
+
+	# Hashed assets are files or nothing: a missing asset — e.g. a source
+	# map, which verify:dist guarantees never exists — is a real 404,
+	# never the SPA fallback.
+	handle /assets/* {
+		root * /srv/dist
+		file_server
+	}
+
+	handle {
+		root * /srv/dist
+		# Routing order, matching the Vite preview middleware and the
+		# per-route HTML build (vite.config.ts): 1) an existing file is
+		# served as-is; 2) an extensionless route with a generated
+		# dist/<route>/index.html gets THAT html (e.g. /methodology →
+		# /methodology/index.html, with its own title and canonical);
+		# 3) only then the SPA fallback /index.html, where React renders
+		# its 404 page. The fallback answers 200 — a real HTTP 404 status
+		# for unknown routes is deliberately not claimed.
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
+}

@@ -1,10 +1,28 @@
-# Web security headers — hosting contract (NOT yet deployed)
+# Web security headers — hosting contract (implemented, NOT yet deployed)
 
-> **Status: REQUIRED, NOT ACTIVE.** No hosting is chosen or configured yet,
-> so none of these headers is currently applied anywhere. This document is
-> the exact contract the hosting layer MUST implement for staging and
-> production before launch. Nothing in the application pretends these
-> protections exist today.
+> **Status: IMPLEMENTED IN CODE, NOT DEPLOYED.** The repository now contains
+> a Caddy configuration (`Caddyfile`, shipped by the `Dockerfile`) that
+> sends every header in this contract, and CI verifies them on a locally
+> built container (`scripts/container-smoke.mjs`). **No environment serves
+> them yet**: Railway, DNS and the strateva.ai domains remain unconfigured,
+> and nothing in this repository deploys anything. This document stays the
+> authoritative contract; the Caddyfile is its implementation.
+
+## How the implementation works
+
+- `Caddyfile` is a template: the `__API_ORIGIN__` placeholder in
+  `connect-src` is rendered at **Docker build time** from the same
+  `VITE_API_URL` build argument that is baked into the app bundle, after
+  validation by `scripts/validate-api-origin.mjs` (clean http(s) origin
+  only; the build fails otherwise). One value drives both the bundle and
+  the CSP — they can never diverge.
+- HSTS is gated by the runtime variable `STRATEVA_HSTS`: the header is sent
+  **only** when the value is exactly `production`. Unset (staging) or any
+  other value sends no HSTS header — fail-closed, never permissive.
+- CI builds the image with the fake origin
+  `https://staging-api.example.invalid` and asserts the exact header
+  values, the HSTS gating in all three modes, per-route HTML, caching and
+  the source-map 404 on loopback, with no external service and no secret.
 
 HSTS and `frame-ancestors` (and CSP in its full form) only work as **real
 HTTP response headers**. They are deliberately NOT faked with `<meta>` tags
@@ -49,6 +67,10 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 - Apply ONLY on the production HTTPS origin. Do not send it from plain-HTTP
   local/preview servers, and hold `preload` until the domain strategy is
   final.
+- Implementation: the container sends this header only when
+  `STRATEVA_HSTS=production` is set at runtime. Staging sets nothing and
+  therefore sends no HSTS; an invalid value also sends none (fail-closed).
+  Both behaviours are asserted by the CI container smoke test.
 
 ### Other headers (all environments)
 

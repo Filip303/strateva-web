@@ -51,8 +51,13 @@ The simulator and the corridors page now consume the **public HTTP contract
 only** — `GET /api/v1/corridors` and `POST /api/v1/routes/quote` on the URL
 configured via `VITE_API_URL`, with every response validated at runtime
 before rendering. That is the app's **only** network surface: there are no
-analytics, no tracking, no cookies, no browser storage and **no deployment
-configuration**. Quote requests are never retried automatically.
+analytics, no tracking, no cookies and no browser storage. Quote requests
+are never retried automatically.
+
+The repository also contains **auditable staging hosting configuration**
+(Dockerfile + Caddy + `railway.toml` + a CI container smoke test) that is
+**not deployed anywhere yet** — see
+[Staging hosting](#staging-hosting-implemented-not-deployed).
 
 The product documentation lives in `docs/` (product contract, sitemap,
 textual wireframes, API-to-UI mapping and terminology) and remains the
@@ -115,12 +120,82 @@ The CI workflow (`.github/workflows/ci.yml`) runs exactly these steps (plus
 `npm audit --audit-level=high`) on pull requests and on `main`. It verifies
 only — it never deploys.
 
+## Staging hosting (implemented, NOT deployed)
+
+The repository contains everything needed to serve the static build on
+Railway behind Caddy — **and none of it is deployed**. There is no Railway
+project wired to this repo, no DNS change, no `*.up.railway.app` URL, no
+GitHub secret and no auto-deploy: this is reviewable configuration only.
+
+- **`Dockerfile`** — multi-stage: Node 22.22.2 (pinned by version and
+  digest) runs `npm ci`, validates the `VITE_API_URL` build argument
+  (`scripts/validate-api-origin.mjs` — the build **fails** if it is missing
+  or not a clean http(s) origin), then `npm run build` and
+  `npm run verify:dist`. The final image (Caddy 2.10.2, pinned by version
+  and digest, running as a non-root user) contains only Caddy, the rendered
+  `Caddyfile` and `dist/` — no Node, no sources, no `node_modules`.
+- **`Caddyfile`** — listens on Railway's injected `PORT` (TLS terminates at
+  Railway's edge; `auto_https off`, `admin off`, `persist_config off`), no
+  access logs (no IPs, paths or headers are recorded), compression, a
+  static `/health` endpoint, and the full header contract from
+  `docs/WEB_SECURITY_HEADERS.md`. Routing serves an existing file first,
+  then the route's own generated `dist/<route>/index.html` (so
+  `/methodology` returns the Methodology HTML with its own title and
+  canonical before any JavaScript), and only then the SPA fallback —
+  unknown routes get HTTP 200 and React renders the 404 page (a real HTTP
+  404 status is deliberately not claimed).
+- **Caching for fast rollback** — hashed `/assets/*` are immutable for a
+  year (their names change with content); HTML, `robots.txt`,
+  `sitemap.xml` and the manifest are `no-cache`, so a redeploy or rollback
+  is visible immediately.
+- **One origin, one source of truth** — the same public `VITE_API_URL`
+  given to the build is baked into the bundle **and** rendered into the
+  CSP `connect-src`. `VITE_*` variables are public by definition; no
+  secret is involved anywhere.
+- **HSTS** — staging sends none. Production must set
+  `STRATEVA_HSTS=production` at runtime to enable
+  `max-age=31536000; includeSubDomains` (no `preload`). Any other value
+  fails closed (no header).
+- **`railway.toml`** — builder, `/health` health check and a bounded
+  restart policy only: no domains, no secrets, no project/service IDs, no
+  variable values.
+
+### Run the container locally (fake origin, no real API)
+
+```bash
+docker build --build-arg VITE_API_URL=https://staging-api.example.invalid -t strateva-web .
+docker run --rm -e PORT=8080 -p 127.0.0.1:8080:8080 strateva-web
+```
+
+Then verify headers and per-route HTML:
+
+```bash
+curl -sI http://127.0.0.1:8080/                # CSP, nosniff, Referrer-Policy, Permissions-Policy; no HSTS
+curl -s  http://127.0.0.1:8080/methodology | head   # Methodology title + canonical before JS
+curl -sI http://127.0.0.1:8080/health          # 200, no internal info
+```
+
+CI runs `scripts/container-smoke.mjs`, which builds the image with that
+same fake origin, starts it on loopback and asserts routing, every header,
+caching, the source-map 404 and the HSTS gating — plus that the build fails
+for missing/invalid origins. No external service is contacted. (Note: the
+CSP includes `upgrade-insecure-requests` per the contract, so a browser
+pointed at the plain-HTTP local container may upgrade asset requests;
+`curl` verification is unaffected. Behind Railway's TLS edge this is
+irrelevant.)
+
+The staging API origin will be `https://staging-api.strateva.ai`, supplied
+as a Railway service variable at build time — it is intentionally not
+hard-coded anywhere in this repository, and Railway/DNS remain
+unconfigured.
+
 ## Release hardening notes
 
 - HTTP responses from the API are size-capped (1 MiB, enforced incrementally
   while streaming) on top of the 15 s timeout, with no automatic retries.
-- Security headers (CSP, HSTS, etc.) are **required but not yet deployed**:
-  the exact hosting contract lives in `docs/WEB_SECURITY_HEADERS.md`.
+- Security headers (CSP, HSTS, etc.) are **implemented by the in-repo Caddy
+  configuration and verified in CI, but not yet deployed**: the exact
+  contract lives in `docs/WEB_SECURITY_HEADERS.md`.
 - Automated accessibility scanning (axe, WCAG 2.2 A/AA tags) runs in CI on
   every route at five widths; the pending manual checks are tracked in
   `docs/ACCESSIBILITY_CHECKLIST.md` — passing axe is not a full-conformance
@@ -140,7 +215,10 @@ only — it never deploys.
 │   ├── main.tsx           Entry point
 │   └── index.css          Neutral CSS foundation (variables, focus, notice)
 ├── index.html             English metadata, no third-party assets
-└── .github/workflows/     Verification-only CI
+├── Dockerfile             Staging hosting image (build + Caddy; not deployed)
+├── Caddyfile              Serving contract: routing, headers, caching
+├── railway.toml           Railway build/health config (no domains, no secrets)
+└── .github/workflows/     Verification-only CI (never deploys)
 ```
 
 ## Contribution rules
