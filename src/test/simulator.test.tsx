@@ -204,8 +204,9 @@ describe('results rendering', () => {
 
     await submitQuote()
     await screen.findByRole('heading', { name: 'Results' })
-    expect(screen.getByText(/Receives \(approx\.\): 4821\.07 BBB/)).toBeInTheDocument()
-    expect(screen.getByText(/Total cost: 12\.50 BBB \(0\.2590 %\)/)).toBeInTheDocument()
+    const recommended = screen.getByRole('region', { name: 'Recommended' })
+    expect(recommended).toHaveTextContent('Receives (approx.): 4821.07 BBB')
+    expect(recommended).toHaveTextContent('Total cost: 12.50 BBB (0.2590 %)')
   })
 
   it('renders recommendation and alternatives with units on every figure', async () => {
