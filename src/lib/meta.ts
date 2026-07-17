@@ -87,6 +87,47 @@ export function metaForPath(pathname: string): PageMeta {
   return PAGE_META.find((page) => page.path === pathname) ?? NOT_FOUND_META
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+}
+
+/**
+ * Render a route's static HTML from the built index.html template, so the
+ * INITIAL HTML of every public route carries its own title, description,
+ * canonical, Open Graph and Twitter metadata before any JavaScript runs.
+ *
+ * Pure string transformation over the tags index.html is known to contain —
+ * used at build time by the per-route-html Vite plugin, keeping PAGE_META
+ * as the single source of truth. Deterministic; no external services.
+ */
+export function renderRouteHtml(template: string, meta: PageMeta): string {
+  const canonicalUrl = `${CANONICAL_ORIGIN}${meta.path}`
+  const title = escapeHtml(meta.title)
+  const description = escapeHtml(meta.description)
+  return template
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+    .replace(
+      /(<meta\s+name="description"\s+content=")[^"]*(")/,
+      `$1${description}$2`,
+    )
+    .replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${canonicalUrl}$2`)
+    .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${title}$2`)
+    .replace(
+      /(<meta\s+property="og:description"\s+content=")[^"]*(")/,
+      `$1${description}$2`,
+    )
+    .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${canonicalUrl}$2`)
+    .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${title}$2`)
+    .replace(
+      /(<meta\s+name="twitter:description"\s+content=")[^"]*(")/,
+      `$1${description}$2`,
+    )
+}
+
 function upsertMetaByName(name: string, content: string): void {
   let tag = document.head.querySelector<HTMLMetaElement>(
     `meta[name="${name}"]`,

@@ -316,3 +316,72 @@ describe('VITE_API_URL hardening', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
+
+describe('cancellation never blocks the error', () => {
+  const encoder = new TextEncoder()
+
+  function oversizedStreamWithHangingCancel(): ReadableStream<Uint8Array> {
+    const chunk = encoder.encode('x'.repeat(600 * 1024))
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(chunk)
+        controller.enqueue(chunk)
+        // never close
+      },
+      cancel() {
+        // A cancel() that NEVER settles must not delay the public error.
+        return new Promise<never>(() => {})
+      },
+    })
+  }
+
+  it('returns contract immediately for an oversized body even if cancel() never resolves', async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(oversizedStreamWithHangingCancel(), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await expectApiError(fetchCorridors(), 'contract')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns timeout at REQUEST_TIMEOUT_MS for a stalled body even if cancel() never resolves', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn(async () => {
+      const stalled = new ReadableStream<Uint8Array>({
+        start() {
+          // never enqueue, never close
+        },
+        cancel() {
+          return new Promise<never>(() => {})
+        },
+      })
+      return new Response(stalled, { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const pending = requestQuote(QUOTE_BODY)
+    const assertion = expectApiError(pending, 'timeout')
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS)
+    await assertion
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns contract immediately when Content-Length exceeds the limit and cancel() hangs', async () => {
+    const fetchMock = vi.fn(async () => {
+      const body = new ReadableStream<Uint8Array>({
+        start() {},
+        cancel() {
+          return new Promise<never>(() => {})
+        },
+      })
+      const response = new Response(body, { status: 200 })
+      // Response normalizes headers; force the oversized declaration.
+      Object.defineProperty(response, 'headers', {
+        value: new Headers({ 'Content-Length': String(MAX_RESPONSE_BYTES + 1) }),
+      })
+      return response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await expectApiError(fetchCorridors(), 'contract')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})

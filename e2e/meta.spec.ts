@@ -58,3 +58,50 @@ test('static SEO assets are served', async ({ page }) => {
   expect(sitemap).toContain('https://strateva.ai/simulator')
   expect(sitemap).not.toContain('404')
 })
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+test('raw initial HTML carries per-route metadata BEFORE JavaScript runs', async ({
+  request,
+}) => {
+  // Plain HTTP fetches of the served HTML — React never executes here.
+  const { PAGE_META } = await import('../src/lib/meta')
+  for (const meta of PAGE_META) {
+    const response = await request.get(meta.path)
+    expect(response.status(), meta.path).toBe(200)
+    const html = await response.text()
+    expect(html, meta.path).toContain('lang="en"')
+    expect(html, meta.path).toContain(`<title>${meta.title}</title>`)
+    // The description meta spans multiple lines in the built HTML.
+    expect(html, meta.path).toMatch(
+      new RegExp(
+        `name="description"\\s+content="${escapeRegExp(meta.description)}"`,
+      ),
+    )
+    expect(html, meta.path).toContain(
+      `rel="canonical" href="https://strateva.ai${meta.path}"`,
+    )
+    expect(html, meta.path).toContain(
+      `property="og:title" content="${meta.title}"`,
+    )
+    expect(html, meta.path).toContain(
+      `property="og:url" content="https://strateva.ai${meta.path}"`,
+    )
+    expect(html, meta.path).toContain(
+      `name="twitter:title" content="${meta.title}"`,
+    )
+  }
+})
+
+test('JS and CSS assets load correctly from a direct nested route', async ({
+  page,
+}) => {
+  // Deep-link into a nested path: the per-route HTML must reference
+  // root-absolute assets so React still mounts and renders.
+  await page.goto('/legal/privacy')
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Privacy' }),
+  ).toBeVisible()
+  await expect(page.locator('.sim-notice')).toBeVisible()
+})

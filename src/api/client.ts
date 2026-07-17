@@ -82,7 +82,10 @@ async function readBoundedJson(
   if (declaredLength !== null) {
     const declared = Number.parseInt(declaredLength, 10)
     if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
-      await response.body?.cancel().catch(() => {})
+      // Fire-and-forget: cancellation is best-effort and must NEVER delay
+      // the sanitized error (a stream's cancel() may pend forever). The
+      // catch handler prevents late unhandled rejections.
+      void response.body?.cancel().catch(() => {})
       throw new ApiError('contract')
     }
   }
@@ -112,7 +115,9 @@ async function readBoundedJson(
       try {
         result = await Promise.race([reader.read(), abortRejection])
       } catch (error) {
-        await reader.cancel().catch(() => {})
+        // Best-effort cancellation, never awaited: a pending cancel() must
+        // not delay the timeout/network error past REQUEST_TIMEOUT_MS.
+        void reader.cancel().catch(() => {})
         if (isAbort(error, controller)) {
           throw new ApiError('timeout')
         }
@@ -121,7 +126,8 @@ async function readBoundedJson(
       if (result.done) break
       received += result.value.byteLength
       if (received > MAX_RESPONSE_BYTES) {
-        await reader.cancel().catch(() => {})
+        // Same: start cancelling, but return the sanitized error immediately.
+        void reader.cancel().catch(() => {})
         throw new ApiError('contract')
       }
       chunks.push(result.value)

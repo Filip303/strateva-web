@@ -9,11 +9,14 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const DIST = new URL('../dist', import.meta.url).pathname
+// fileURLToPath keeps this portable (Windows drive letters, encoded chars);
+// URL.pathname is a URL path, not a native filesystem path.
+const DIST = fileURLToPath(new URL('../dist', import.meta.url))
 
 // Documented asset budgets (bytes, uncompressed). The main JS bundle is
-// ~260 KB today; budgets leave headroom without hiding a runaway asset.
+// ~370 KB today; budgets leave headroom without hiding a runaway asset.
 const BUDGETS = {
   js: 450_000,
   css: 80_000,
