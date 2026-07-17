@@ -44,6 +44,14 @@
 	@hsts_production expression `{env.STRATEVA_DEPLOYMENT_ENV} == "production"`
 	header @hsts_production Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
+	# Staging must never be indexed. The SAME validated deployment mode gates
+	# this — no second variable. In staging every response carries a robots
+	# directive; production sends none (its indexability is governed only by
+	# the normal robots.txt + sitemap below). This is a hosting concern, not
+	# a frontend one: it changes no page content, route, CSP or caching.
+	@staging expression `{env.STRATEVA_DEPLOYMENT_ENV} == "staging"`
+	header @staging X-Robots-Tag "noindex, nofollow, noarchive"
+
 	# Rollback-friendly caching: everything revalidates by default (HTML,
 	# robots.txt, sitemap.xml, site.webmanifest, health), so a redeploy —
 	# including a rollback — takes effect immediately. Only the hashed,
@@ -56,6 +64,25 @@
 	# Static health endpoint: constant body, no version, no internal info.
 	handle /health {
 		respond "ok" 200
+	}
+
+	# In staging, /robots.txt disallows all crawling and carries NO sitemap,
+	# so the staging host is never indexed. In production this matcher is
+	# false and /robots.txt falls through to the file_server below, serving
+	# the normal dist/robots.txt (Allow: / + the production sitemap). Same
+	# validated deployment mode; no second toggle.
+	@staging_robots {
+		expression `{env.STRATEVA_DEPLOYMENT_ENV} == "staging"`
+		path /robots.txt
+	}
+	handle @staging_robots {
+		# The staging robots body is a committed, auditable file kept OUTSIDE
+		# /srv/dist, so production's file_server can never serve it and it
+		# never reaches the built bundle. It disallows all crawling and
+		# carries no sitemap.
+		root * /srv
+		rewrite * /robots.staging.txt
+		file_server
 	}
 
 	# Hashed assets are files or nothing: a missing asset — e.g. a source

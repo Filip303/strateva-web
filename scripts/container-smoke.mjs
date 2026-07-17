@@ -22,6 +22,9 @@
  *     and sends no HSTS, production starts and sends exactly the documented
  *     HSTS, and a missing or invalid mode makes the container exit non-zero
  *     before it can serve anything (fail-closed)
+ *   - staging is non-indexable: X-Robots-Tag noindex on every response and a
+ *     robots.txt that disallows all crawling with no production sitemap;
+ *     production stays indexable (no noindex, normal robots.txt + sitemap)
  *   - railway.toml keeps the audited enums and leaks no domain/secret/ID
  *   - the Caddyfile stays `caddy fmt`-clean
  *
@@ -351,6 +354,35 @@ async function runStagingAssertions(base) {
     home.response.headers.get('strict-transport-security') === null,
     'staging container sent Strict-Transport-Security',
   )
+
+  // Staging must never be indexed: X-Robots-Tag on EVERY response and a
+  // robots.txt that disallows all crawling with no production sitemap.
+  const XROBOTS = 'noindex, nofollow, noarchive'
+  assert(
+    home.response.headers.get('x-robots-tag') === XROBOTS,
+    `staging / X-Robots-Tag is "${home.response.headers.get('x-robots-tag')}", expected "${XROBOTS}"`,
+  )
+  assert(
+    js.response.headers.get('x-robots-tag') === XROBOTS,
+    `staging asset X-Robots-Tag is "${js.response.headers.get('x-robots-tag')}", expected "${XROBOTS}"`,
+  )
+  const robots = await get(base, '/robots.txt')
+  assert(
+    robots.response.status === 200,
+    `staging /robots.txt answered ${robots.response.status}`,
+  )
+  assert(
+    robots.body.includes('Disallow: /'),
+    `staging /robots.txt does not disallow crawling:\n${robots.body}`,
+  )
+  assert(
+    !robots.body.includes('https://strateva.ai/sitemap.xml'),
+    `staging /robots.txt leaks the production sitemap:\n${robots.body}`,
+  )
+  assert(
+    robots.response.headers.get('x-robots-tag') === XROBOTS,
+    'staging /robots.txt is missing the X-Robots-Tag directive',
+  )
 }
 
 async function runDeploymentModeAssertions() {
@@ -362,6 +394,7 @@ async function runDeploymentModeAssertions() {
   ])
   await waitForHealth(prodBase)
   const prod = await get(prodBase, '/')
+  assert(prod.response.status === 200, `production / answered ${prod.response.status}`)
   assert(
     prod.response.headers.get('strict-transport-security') === EXPECTED_HSTS,
     `production HSTS is "${prod.response.headers.get('strict-transport-security')}", expected "${EXPECTED_HSTS}"`,
@@ -373,6 +406,32 @@ async function runDeploymentModeAssertions() {
     'production HSTS must not include preload',
   )
   assertSecurityHeaders(prod.response.headers, 'production /')
+
+  // Production is indexable: no noindex X-Robots-Tag anywhere, and the
+  // normal robots.txt (Allow: / plus the production sitemap) is served.
+  const prodXRobots = prod.response.headers.get('x-robots-tag')
+  assert(
+    prodXRobots === null || !/noindex/i.test(prodXRobots),
+    `production / sent an X-Robots-Tag with noindex ("${prodXRobots}")`,
+  )
+  const prodRobots = await get(prodBase, '/robots.txt')
+  assert(
+    prodRobots.response.status === 200,
+    `production /robots.txt answered ${prodRobots.response.status}`,
+  )
+  assert(
+    prodRobots.body.includes('Allow: /'),
+    `production /robots.txt does not allow crawling:\n${prodRobots.body}`,
+  )
+  assert(
+    prodRobots.body.includes('https://strateva.ai/sitemap.xml'),
+    `production /robots.txt lost the production sitemap:\n${prodRobots.body}`,
+  )
+  const prodRobotsXRobots = prodRobots.response.headers.get('x-robots-tag')
+  assert(
+    prodRobotsXRobots === null || !/noindex/i.test(prodRobotsXRobots),
+    `production /robots.txt sent an X-Robots-Tag with noindex ("${prodRobotsXRobots}")`,
+  )
 
   // Mandatory mode, fail-closed: a MISSING mode aborts before boot.
   await expectContainerRefusesToStart('deployment mode missing', [])

@@ -86,6 +86,22 @@ Referrer-Policy: no-referrer
 Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
 ```
 
+### Search-engine indexing (staging must not be indexed)
+
+Gated by the SAME validated `STRATEVA_DEPLOYMENT_ENV` — no second variable.
+
+- **staging**: every response carries
+  `X-Robots-Tag: noindex, nofollow, noarchive`, and `/robots.txt` is served
+  as `User-agent: *` / `Disallow: /` with **no sitemap** (a committed file
+  kept outside `dist/`, so it never reaches the bundle and production never
+  serves it).
+- **production**: no `X-Robots-Tag` is sent, and `/robots.txt` is the normal
+  `public/robots.txt` (`Allow: /` plus `Sitemap: https://strateva.ai/sitemap.xml`);
+  the production sitemap is unchanged.
+
+This is a hosting-layer concern only: it changes no page content, route,
+CSP, HSTS or caching. The CI container smoke test asserts both modes.
+
 ## Source maps policy
 
 Production builds are generated with `sourcemap: false` (see
