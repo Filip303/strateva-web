@@ -39,6 +39,8 @@ FROM caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac523
 
 COPY --from=build /tmp/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv/dist
+# The entrypoint enforces the mandatory deployment mode before Caddy binds.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Run as a non-privileged user. Railway's injected PORT is dynamic, so the
 # Caddy binary gets CAP_NET_BIND_SERVICE (file capability) to stay
@@ -47,13 +49,16 @@ COPY --from=build /app/dist /srv/dist
 RUN apk add --no-cache libcap \
 	&& setcap cap_net_bind_service=+ep /usr/bin/caddy \
 	&& apk del libcap \
+	&& chmod 0755 /usr/local/bin/docker-entrypoint.sh \
 	&& addgroup -S web \
 	&& adduser -S -G web -H web \
 	&& chown -R web:web /config /data
 
 # Catch config errors at build time, not at boot (placeholder values only).
-RUN PORT=8080 STRATEVA_HSTS= caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+RUN PORT=8080 STRATEVA_DEPLOYMENT_ENV=staging caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 USER web
 
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+# The entrypoint validates STRATEVA_DEPLOYMENT_ENV (staging|production) and
+# then exec's Caddy; a missing or invalid mode exits non-zero before boot.
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

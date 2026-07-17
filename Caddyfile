@@ -8,7 +8,6 @@
 #
 # Railway terminates TLS at its edge and injects PORT, so Caddy only speaks
 # plain HTTP on that port and manages no certificates.
-
 {
 	# No runtime mutation surface: the admin API is disabled and the config
 	# is never persisted or autosaved.
@@ -35,12 +34,14 @@
 		-Server
 	}
 
-	# HSTS is sent ONLY when the deployment explicitly declares itself the
-	# production HTTPS origin with STRATEVA_HSTS=production. Staging sets
-	# nothing; any other or invalid value fails closed (no header, which is
-	# the restrictive default — never a permissive config). No `preload`
-	# until the domain strategy is final (docs/WEB_SECURITY_HEADERS.md).
-	@hsts_production expression `{env.STRATEVA_HSTS} == "production"`
+	# HSTS is sent ONLY in production. The deployment mode
+	# (STRATEVA_DEPLOYMENT_ENV) is mandatory and already validated by the
+	# entrypoint to be exactly `staging` or `production` before Caddy
+	# starts, so a misconfigured deploy never reaches this point. Staging
+	# sends no HSTS; production sends it with no `preload` until the domain
+	# strategy is final (docs/WEB_SECURITY_HEADERS.md). One variable, no
+	# separate manual toggle that could diverge.
+	@hsts_production expression `{env.STRATEVA_DEPLOYMENT_ENV} == "production"`
 	header @hsts_production Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
 	# Rollback-friendly caching: everything revalidates by default (HTML,

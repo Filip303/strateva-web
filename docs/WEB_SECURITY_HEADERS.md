@@ -16,9 +16,13 @@
   validation by `scripts/validate-api-origin.mjs` (clean http(s) origin
   only; the build fails otherwise). One value drives both the bundle and
   the CSP — they can never diverge.
-- HSTS is gated by the runtime variable `STRATEVA_HSTS`: the header is sent
-  **only** when the value is exactly `production`. Unset (staging) or any
-  other value sends no HSTS header — fail-closed, never permissive.
+- The deployment mode is a **mandatory** runtime variable
+  `STRATEVA_DEPLOYMENT_ENV`, validated by the container entrypoint before
+  Caddy starts. It must be exactly `staging` or `production`; a missing,
+  empty or invalid value makes the container **exit non-zero before serving
+  anything** (fail-closed by refusing to start, never a silent permissive
+  boot). Caddy sends HSTS **only** in `production` mode — the same single
+  validated variable, with no separate manual toggle that could diverge.
 - CI builds the image with the fake origin
   `https://staging-api.example.invalid` and asserts the exact header
   values, the HSTS gating in all three modes, per-route HTML, caching and
@@ -68,9 +72,11 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
   local/preview servers, and hold `preload` until the domain strategy is
   final.
 - Implementation: the container sends this header only when
-  `STRATEVA_HSTS=production` is set at runtime. Staging sets nothing and
-  therefore sends no HSTS; an invalid value also sends none (fail-closed).
-  Both behaviours are asserted by the CI container smoke test.
+  `STRATEVA_DEPLOYMENT_ENV=production` at runtime. `staging` starts and
+  sends no HSTS; a missing or invalid mode makes the container exit
+  non-zero before boot (it never serves without HSTS in production). All
+  four cases (staging on/no-HSTS, production on/HSTS, missing → refuse,
+  invalid → refuse) are asserted by the CI container smoke test.
 
 ### Other headers (all environments)
 

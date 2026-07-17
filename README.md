@@ -152,42 +152,55 @@ GitHub secret and no auto-deploy: this is reviewable configuration only.
   given to the build is baked into the bundle **and** rendered into the
   CSP `connect-src`. `VITE_*` variables are public by definition; no
   secret is involved anywhere.
-- **HSTS** — staging sends none. Production must set
-  `STRATEVA_HSTS=production` at runtime to enable
-  `max-age=31536000; includeSubDomains` (no `preload`). Any other value
-  fails closed (no header).
-- **`railway.toml`** — builder, `/health` health check and a bounded
-  restart policy only: no domains, no secrets, no project/service IDs, no
-  variable values.
+- **Mandatory deployment mode + HSTS** — `STRATEVA_DEPLOYMENT_ENV` is
+  **required** at runtime and must be exactly `staging` or `production`.
+  The container entrypoint validates it before Caddy starts: a missing,
+  empty or invalid value makes the container **exit non-zero before serving
+  anything** (fail-closed — a misconfigured production can never silently
+  run without HSTS). `staging` sends no HSTS; `production` sends exactly
+  `max-age=31536000; includeSubDomains` (no `preload`). It is the same
+  single variable Caddy reads — there is no second toggle that could
+  diverge.
+- **`railway.toml`** — `DOCKERFILE` builder, `/health` health check and a
+  bounded `ON_FAILURE` restart policy only: no domains, no secrets, no
+  project/service IDs, no variable values. `scripts/verify-railway-toml.mjs`
+  (run in CI, no network) fails on any drift of those enums or any leaked
+  domain/secret/ID.
 
 ### Run the container locally (fake origin, no real API)
 
 ```bash
 docker build --build-arg VITE_API_URL=https://staging-api.example.invalid -t strateva-web .
-docker run --rm -e PORT=8080 -p 127.0.0.1:8080:8080 strateva-web
+docker run --rm -e PORT=8080 -e STRATEVA_DEPLOYMENT_ENV=staging -p 127.0.0.1:8080:8080 strateva-web
 ```
 
-Then verify headers and per-route HTML:
+`STRATEVA_DEPLOYMENT_ENV` is mandatory: omit it (or mistype it) and the
+container exits immediately instead of starting. Then verify headers and
+per-route HTML:
 
 ```bash
-curl -sI http://127.0.0.1:8080/                # CSP, nosniff, Referrer-Policy, Permissions-Policy; no HSTS
+curl -sI http://127.0.0.1:8080/                # CSP, nosniff, Referrer-Policy, Permissions-Policy; no HSTS in staging
 curl -s  http://127.0.0.1:8080/methodology | head   # Methodology title + canonical before JS
 curl -sI http://127.0.0.1:8080/health          # 200, no internal info
 ```
 
 CI runs `scripts/container-smoke.mjs`, which builds the image with that
 same fake origin, starts it on loopback and asserts routing, every header,
-caching, the source-map 404 and the HSTS gating — plus that the build fails
-for missing/invalid origins. No external service is contacted. (Note: the
-CSP includes `upgrade-insecure-requests` per the contract, so a browser
-pointed at the plain-HTTP local container may upgrade asset requests;
-`curl` verification is unaffected. Behind Railway's TLS edge this is
-irrelevant.)
+caching, the source-map 404 and the deployment-mode HSTS gating (staging →
+no HSTS, production → exact HSTS, missing/invalid → the container refuses
+to start) — plus that the build fails for missing/invalid origins, that
+`railway.toml` keeps its audited enums, and that the `Caddyfile` stays
+`caddy fmt`-clean. No external service is contacted. (Note: the CSP
+includes `upgrade-insecure-requests` per the contract, so a browser pointed
+at the plain-HTTP local container may upgrade asset requests; `curl`
+verification is unaffected. Behind Railway's TLS edge this is irrelevant.)
 
-The staging API origin will be `https://staging-api.strateva.ai`, supplied
-as a Railway service variable at build time — it is intentionally not
-hard-coded anywhere in this repository, and Railway/DNS remain
-unconfigured.
+The staging API origin will be `https://staging-api.strateva.ai`. When
+Railway is eventually configured, its staging service will need two
+variables — `VITE_API_URL=https://staging-api.strateva.ai` (build time)
+and `STRATEVA_DEPLOYMENT_ENV=staging` (runtime) — set in Railway itself;
+they are intentionally **not** committed to `railway.toml` or anywhere in
+this repository, and Railway/DNS remain unconfigured.
 
 ## Release hardening notes
 

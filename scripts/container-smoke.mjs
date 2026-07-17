@@ -18,22 +18,34 @@
  *     is present on every response, with connect-src bound to the SAME
  *     origin the build was given — no wildcards, no unsafe-eval, no Railway
  *   - hashed assets are immutable; HTML revalidates (fast rollback)
- *   - HSTS: absent in staging, present ONLY with STRATEVA_HSTS=production,
- *     and absent again for any invalid value (fail-closed)
+ *   - deployment mode (STRATEVA_DEPLOYMENT_ENV) is mandatory: staging starts
+ *     and sends no HSTS, production starts and sends exactly the documented
+ *     HSTS, and a missing or invalid mode makes the container exit non-zero
+ *     before it can serve anything (fail-closed)
+ *   - railway.toml keeps the audited enums and leaks no domain/secret/ID
+ *   - the Caddyfile stays `caddy fmt`-clean
  *
  * Deterministic, bounded timeouts throughout; containers are removed even
  * when an assertion fails.
  */
 
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { setTimeout as sleep } from 'node:timers/promises'
 
 const IMAGE = 'strateva-web-smoke'
 const FAKE_ORIGIN = 'https://staging-api.example.invalid'
 const CONTAINER_PORT = '8080'
 const HEALTH_ATTEMPTS = 60 // x 500 ms = 30 s bound
+const EXIT_ATTEMPTS = 60 // x 500 ms = 30 s bound
 const FETCH_TIMEOUT_MS = 5_000
 const BUILD_TIMEOUT_MS = 15 * 60_000
+
+const CADDYFILE = fileURLToPath(new URL('../Caddyfile', import.meta.url))
+const VERIFY_RAILWAY = fileURLToPath(
+  new URL('./verify-railway-toml.mjs', import.meta.url),
+)
 
 const EXPECTED_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; " +
@@ -114,6 +126,76 @@ function removeContainers() {
       // Best effort: never mask the original failure.
     }
   }
+}
+
+// Start detached with a bad/absent deployment mode and confirm the entrypoint
+// aborts (container exits non-zero) BEFORE Caddy binds — it must never become
+// healthy. Not published: nothing should ever listen.
+function expectContainerRefusesToStart(label, envArgs) {
+  const name = `${IMAGE}-refuse-${label.replace(/\W+/g, '')}-${process.pid}`
+  docker([
+    'run',
+    '--detach',
+    '--name',
+    name,
+    '--env',
+    `PORT=${CONTAINER_PORT}`,
+    ...envArgs,
+    IMAGE,
+  ])
+  startedContainers.push(name)
+  return (async () => {
+    for (let attempt = 0; attempt < EXIT_ATTEMPTS; attempt++) {
+      const running = docker([
+        'inspect',
+        '-f',
+        '{{.State.Running}}',
+        name,
+      ]).trim()
+      if (running === 'false') {
+        const code = docker([
+          'inspect',
+          '-f',
+          '{{.State.ExitCode}}',
+          name,
+        ]).trim()
+        assert(
+          code !== '0',
+          `${label}: container exited 0, expected a non-zero refusal`,
+        )
+        return
+      }
+      await sleep(500)
+    }
+    throw new Error(
+      `SMOKE FAILED — ${label}: container is still running, expected it to refuse to start`,
+    )
+  })()
+}
+
+// railway.toml must keep the audited enums and leak nothing. Runs the
+// dependency-free, no-network validator and fails the smoke test if it does.
+function assertRailwayToml() {
+  console.log('[check] railway.toml enums and no-leak regression')
+  execFileSync('node', [VERIFY_RAILWAY], { stdio: 'inherit', timeout: 30_000 })
+}
+
+// The Caddyfile template must stay `caddy fmt`-clean, using the exact Caddy
+// binary shipped in the built image (no separate install). A drift here is
+// what produced the CI format warning.
+function assertCaddyfileFormatted() {
+  console.log('[check] Caddyfile is caddy-fmt clean')
+  const current = readFileSync(CADDYFILE, 'utf8')
+  const formatted = execFileSync(
+    'docker',
+    ['run', '--rm', '-i', '--entrypoint', 'caddy', IMAGE, 'fmt', '-'],
+    { input: current, encoding: 'utf8', timeout: 60_000 },
+  )
+  assert(
+    formatted === current,
+    'Caddyfile is not caddy-fmt formatted; run: ' +
+      'docker run --rm -i caddy:2.10.2-alpine caddy fmt - < Caddyfile',
+  )
 }
 
 async function get(base, path) {
@@ -263,19 +345,20 @@ async function runStagingAssertions(base) {
     `${jsPath}.map answered ${map.response.status}, expected 404`,
   )
 
-  // Staging must NOT send HSTS (plain-HTTP behind Railway's TLS edge is
-  // only declared production explicitly).
+  // Staging (STRATEVA_DEPLOYMENT_ENV=staging) must NOT send HSTS: it serves
+  // plain HTTP behind Railway's TLS edge and is not the production origin.
   assert(
     home.response.headers.get('strict-transport-security') === null,
     'staging container sent Strict-Transport-Security',
   )
 }
 
-async function runHstsModeAssertions() {
-  // Production mode: STRATEVA_HSTS=production sends the documented header.
+async function runDeploymentModeAssertions() {
+  // Production mode: STRATEVA_DEPLOYMENT_ENV=production starts and sends the
+  // documented HSTS (no preload).
   const prodBase = startContainer(`${IMAGE}-prod-${process.pid}`, [
     '--env',
-    'STRATEVA_HSTS=production',
+    'STRATEVA_DEPLOYMENT_ENV=production',
   ])
   await waitForHealth(prodBase)
   const prod = await get(prodBase, '/')
@@ -283,24 +366,31 @@ async function runHstsModeAssertions() {
     prod.response.headers.get('strict-transport-security') === EXPECTED_HSTS,
     `production HSTS is "${prod.response.headers.get('strict-transport-security')}", expected "${EXPECTED_HSTS}"`,
   )
+  assert(
+    !(prod.response.headers.get('strict-transport-security') ?? '').includes(
+      'preload',
+    ),
+    'production HSTS must not include preload',
+  )
   assertSecurityHeaders(prod.response.headers, 'production /')
 
-  // Fail-closed: any value other than exactly "production" must NOT enable
-  // HSTS (an invalid value never produces a permissive config).
-  const invalidBase = startContainer(`${IMAGE}-invalid-${process.pid}`, [
+  // Mandatory mode, fail-closed: a MISSING mode aborts before boot.
+  await expectContainerRefusesToStart('deployment mode missing', [])
+  // An INVALID mode aborts before boot (never a silent permissive start).
+  await expectContainerRefusesToStart('deployment mode invalid', [
     '--env',
-    'STRATEVA_HSTS=yes-please',
+    'STRATEVA_DEPLOYMENT_ENV=prod',
   ])
-  await waitForHealth(invalidBase)
-  const invalid = await get(invalidBase, '/')
-  assert(
-    invalid.response.headers.get('strict-transport-security') === null,
-    'invalid STRATEVA_HSTS value still enabled HSTS (must fail closed)',
-  )
 }
 
 try {
+  // Static, no-network regressions first (fast to fail).
+  assertRailwayToml()
+
   buildImage()
+
+  // The Caddyfile template must stay formatted (uses the built image's caddy).
+  assertCaddyfileFormatted()
 
   // The build must fail fast on a missing or invalid public API origin.
   expectBuildFailure('VITE_API_URL missing', [])
@@ -325,17 +415,24 @@ try {
     'VITE_API_URL=https://something.up.railway.app',
   ])
 
-  const base = startContainer(`${IMAGE}-staging-${process.pid}`, [])
+  const base = startContainer(`${IMAGE}-staging-${process.pid}`, [
+    '--env',
+    'STRATEVA_DEPLOYMENT_ENV=staging',
+  ])
   console.log(`[run] staging container on ${base} (loopback only)`)
   await waitForHealth(base)
   await runStagingAssertions(base)
   console.log('[ok] staging assertions passed')
 
-  await runHstsModeAssertions()
-  console.log('[ok] HSTS mode assertions passed (production on, fail-closed)')
+  await runDeploymentModeAssertions()
+  console.log(
+    '[ok] deployment-mode assertions passed (production HSTS on; ' +
+      'missing/invalid refuse to start)',
+  )
 
-  console.log('container-smoke OK — build validation, routing, headers, ' +
-    'caching, source-map 404 and HSTS gating all verified on loopback.')
+  console.log('container-smoke OK — railway.toml regression, Caddyfile format, ' +
+    'build validation, routing, headers, caching, source-map 404 and ' +
+    'mandatory deployment-mode HSTS gating all verified on loopback.')
 } finally {
   removeContainers()
 }
