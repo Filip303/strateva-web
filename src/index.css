@@ -320,3 +320,52 @@ button.cta:disabled {
 .collapsible-body h4 {
   margin: var(--space-s) 0 var(--space-xs);
 }
+
+/* Opt-in analytics consent banner: fixed at the bottom, high-contrast, does
+   not overlay the primary content or navigation. */
+.consent-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-s) var(--space-l);
+  padding: var(--space-m);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-top: 2px solid var(--color-border);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.consent-text {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: 0.9375rem;
+}
+
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-s);
+}
+
+.consent-secondary {
+  background: var(--color-bg);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+/* Button that reads as a link (permanent "Privacy choices" footer control). */
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}

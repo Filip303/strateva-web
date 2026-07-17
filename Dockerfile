@@ -33,7 +33,7 @@ RUN VITE_API_URL="$(cat /tmp/api-origin)" npm run build && npm run verify:dist
 # replacement metacharacters. Fail if the placeholder did not render.
 RUN sed "s|__API_ORIGIN__|$(cat /tmp/api-origin)|" Caddyfile > /tmp/Caddyfile \
 	&& ! grep -q '__API_ORIGIN__' /tmp/Caddyfile \
-	&& grep -qF "connect-src 'self' $(cat /tmp/api-origin);" /tmp/Caddyfile
+	&& grep -qF "connect-src 'self' $(cat /tmp/api-origin) https://www.googletagmanager.com" /tmp/Caddyfile
 
 FROM caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
 
