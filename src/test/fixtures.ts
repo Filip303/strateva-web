@@ -132,3 +132,85 @@ export function makeQuoteResponse(): QuoteResponse {
     provider_failures: [],
   }
 }
+
+/**
+ * A contract-complete response whose recommended route carries a richer
+ * latency picture: three distinct route times, plus declarative, observed,
+ * fallback and chain-confirmation legs — for the results-UX regressions.
+ * Built from the same authoritative schemas; still fully schema-valid.
+ */
+export function makeDetailedQuoteResponse(): QuoteResponse {
+  const base = makeQuoteResponse()
+  const recommended = base.recommended_route
+  return {
+    ...base,
+    recommended_route: {
+      ...recommended,
+      // Three DISTINCT time magnitudes.
+      expected_time_seconds: 600,
+      conservative_time_seconds: 900,
+      time_to_fiat_available_seconds: 1200,
+      latency_breakdown: [
+        ...recommended.latency_breakdown,
+        { component: 'onramp', expected_seconds: 120, conservative_seconds: 180 },
+        {
+          component: 'chain_confirmation',
+          expected_seconds: 120,
+          conservative_seconds: 240,
+        },
+        { component: 'offramp', expected_seconds: 300, conservative_seconds: 600 },
+      ],
+      latency_legs: [
+        ...recommended.latency_legs,
+        {
+          position: 1,
+          edge_id: 'edge_onramp',
+          provider: 'mock_ramp',
+          component: 'onramp',
+          confirmation_target: null,
+          expected_seconds: 120,
+          conservative_seconds: 180,
+          availability: 'banking_hours',
+          basis: 'operational_duration',
+          latency_source: 'observed',
+          provenance: 'observed',
+          fallback_reason: null,
+          as_of: '2026-07-01',
+          valid_until: '2026-08-01',
+        },
+        {
+          position: 2,
+          edge_id: 'edge_chain',
+          provider: 'mock_ramp',
+          component: 'chain_confirmation',
+          confirmation_target: 'safe',
+          expected_seconds: 120,
+          conservative_seconds: 240,
+          availability: 'continuous',
+          basis: 'operational_duration',
+          latency_source: 'declarative',
+          provenance: 'declarative',
+          fallback_reason: null,
+          as_of: null,
+          valid_until: null,
+        },
+        {
+          position: 3,
+          edge_id: 'edge_offramp',
+          provider: 'mock_payout',
+          component: 'offramp',
+          confirmation_target: null,
+          expected_seconds: 300,
+          conservative_seconds: 600,
+          availability: 'banking_hours',
+          basis: 'operational_duration',
+          latency_source: 'declarative',
+          provenance: 'fallback',
+          fallback_reason: 'evidence_stale',
+          as_of: null,
+          valid_until: null,
+        },
+      ],
+    },
+  }
+}

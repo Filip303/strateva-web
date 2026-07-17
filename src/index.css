@@ -272,3 +272,51 @@ button.cta:disabled {
   min-height: 1.5rem;
   margin: var(--space-s) 0;
 }
+
+/* Collapsible route detail (accessible disclosure) */
+.collapsible {
+  margin: var(--space-s) 0;
+}
+
+.collapsible-toggle {
+  background: none;
+  border: 0;
+  padding: var(--space-xs) 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.collapsible-body {
+  border-left: 3px solid var(--color-border);
+  padding: var(--space-s) var(--space-m);
+  margin: var(--space-xs) 0 var(--space-s);
+}
+
+.step-list,
+.latency-list {
+  padding-left: var(--space-m);
+  margin: 0 0 var(--space-s);
+}
+
+.step-list > li,
+.latency-list > li {
+  margin-bottom: var(--space-s);
+}
+
+.step-list ul,
+.latency-list ul {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-xs) 0 0;
+}
+
+.step-title {
+  margin: 0 0 var(--space-xs);
+  font-weight: 600;
+}
+
+.collapsible-body h4 {
+  margin: var(--space-s) 0 var(--space-xs);
+}
